@@ -33,10 +33,22 @@ function arg(name: string): string | undefined {
 const path = process.argv[2]
 if (!path || path.startsWith('--')) {
   console.error('usage: timeslife-eval <fixture.json> [--from DATE] [--to DATE] [--now ISO]')
+  console.error('example: pnpm eval packages/core/fixture.example.json --from 2026-01-05 --to 2026-01-12')
   process.exit(1)
 }
 
-const fixture = JSON.parse(readFileSync(path, 'utf8')) as Fixture
+let fixture: Fixture
+try {
+  fixture = JSON.parse(readFileSync(path, 'utf8')) as Fixture
+} catch (err) {
+  // A missing or malformed fixture is a usage mistake, not a crash. Print the shape
+  // rather than an ENOENT stack trace.
+  console.error(`cannot read fixture '${path}': ${(err as Error).message}`)
+  console.error('\nexpected JSON shape:')
+  console.error('  { tz?, tags[], tracks[], entries[], goals[], routines[] }')
+  console.error('\nexample: pnpm eval packages/core/fixture.example.json --from 2026-01-05 --to 2026-01-12')
+  process.exit(1)
+}
 const tz = fixture.tz ?? Temporal.Now.timeZoneId()
 
 const from = Temporal.PlainDate.from(arg('from') ?? Temporal.Now.plainDateISO(tz).toString())

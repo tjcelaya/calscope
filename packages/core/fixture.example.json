@@ -1,0 +1,357 @@
+{
+  "tz": "America/New_York",
+  "tags": [
+    {
+      "id": "caffeine",
+      "name": "caffeine"
+    },
+    {
+      "id": "exercise",
+      "name": "exercise"
+    },
+    {
+      "id": "cardio",
+      "name": "cardio",
+      "parentId": "exercise"
+    },
+    {
+      "id": "strength",
+      "name": "strength",
+      "parentId": "exercise"
+    },
+    {
+      "id": "meds",
+      "name": "meds"
+    },
+    {
+      "id": "screens",
+      "name": "screens"
+    },
+    {
+      "id": "vice",
+      "name": "vice"
+    }
+  ],
+  "tracks": [
+    {
+      "id": "espresso",
+      "name": "Espresso",
+      "valueType": "quantity",
+      "tags": [
+        "caffeine"
+      ],
+      "unit": "mg",
+      "color": "#d98b45"
+    },
+    {
+      "id": "tea",
+      "name": "Tea",
+      "valueType": "quantity",
+      "tags": [
+        "caffeine"
+      ],
+      "unit": "mg",
+      "color": "#8fb45e"
+    },
+    {
+      "id": "cola",
+      "name": "Cola",
+      "valueType": "quantity",
+      "tags": [
+        "caffeine"
+      ],
+      "unit": "g",
+      "color": "#b4525e"
+    },
+    {
+      "id": "coffee-cups",
+      "name": "Coffee (cups)",
+      "valueType": "quantity",
+      "tags": [
+        "caffeine"
+      ],
+      "unit": "cup",
+      "color": "#a07a4a"
+    },
+    {
+      "id": "run",
+      "name": "Run",
+      "valueType": "interval",
+      "tags": [
+        "cardio"
+      ],
+      "color": "#c2557a"
+    },
+    {
+      "id": "lift",
+      "name": "Lift",
+      "valueType": "interval",
+      "tags": [
+        "strength"
+      ],
+      "color": "#5e8fb4"
+    },
+    {
+      "id": "vitamind",
+      "name": "Vitamin D",
+      "valueType": "binary",
+      "tags": [
+        "meds"
+      ],
+      "color": "#e0c34a"
+    },
+    {
+      "id": "alcohol",
+      "name": "Alcohol",
+      "valueType": "binary",
+      "tags": [
+        "vice"
+      ],
+      "color": "#7a4ac2"
+    },
+    {
+      "id": "phone",
+      "name": "Phone",
+      "valueType": "interval",
+      "tags": [
+        "screens"
+      ],
+      "color": "#4ac2b8"
+    },
+    {
+      "id": "bedtime",
+      "name": "Bedtime",
+      "valueType": "binary",
+      "tags": [],
+      "color": "#6c7bff"
+    }
+  ],
+  "entries": [
+    {
+      "id": "c1",
+      "trackId": "espresso",
+      "start": "2026-01-05T07:30:00-05:00[America/New_York]",
+      "value": 80
+    },
+    {
+      "id": "c2",
+      "trackId": "tea",
+      "start": "2026-01-05T15:00:00-05:00[America/New_York]",
+      "value": 40
+    },
+    {
+      "id": "c3",
+      "trackId": "espresso",
+      "start": "2026-01-06T08:00:00-05:00[America/New_York]",
+      "value": 80
+    },
+    {
+      "id": "c4",
+      "trackId": "cola",
+      "start": "2026-01-07T13:00:00-05:00[America/New_York]",
+      "value": 0.2
+    },
+    {
+      "id": "c5",
+      "trackId": "coffee-cups",
+      "start": "2026-01-07T16:00:00-05:00[America/New_York]",
+      "value": 2
+    },
+    {
+      "id": "x1",
+      "trackId": "run",
+      "start": "2026-01-05T17:00:00-05:00[America/New_York]",
+      "end": "2026-01-05T17:30:00-05:00[America/New_York]"
+    },
+    {
+      "id": "x2",
+      "trackId": "lift",
+      "start": "2026-01-06T18:00:00-05:00[America/New_York]",
+      "end": "2026-01-06T18:45:00-05:00[America/New_York]"
+    },
+    {
+      "id": "x3",
+      "trackId": "run",
+      "start": "2026-01-09T07:00:00-05:00[America/New_York]",
+      "end": "2026-01-09T08:00:00-05:00[America/New_York]"
+    },
+    {
+      "id": "m1",
+      "trackId": "vitamind",
+      "start": "2026-01-05T09:00:00-05:00[America/New_York]"
+    },
+    {
+      "id": "m2",
+      "trackId": "vitamind",
+      "start": "2026-01-06T09:00:00-05:00[America/New_York]"
+    },
+    {
+      "id": "m3",
+      "trackId": "vitamind",
+      "start": "2026-01-08T09:05:00-05:00[America/New_York]"
+    },
+    {
+      "id": "a1",
+      "trackId": "alcohol",
+      "start": "2026-01-06T20:00:00-05:00[America/New_York]"
+    },
+    {
+      "id": "b1",
+      "trackId": "bedtime",
+      "start": "2026-01-05T23:00:00-05:00[America/New_York]"
+    },
+    {
+      "id": "b2",
+      "trackId": "bedtime",
+      "start": "2026-01-06T23:00:00-05:00[America/New_York]"
+    },
+    {
+      "id": "p1",
+      "trackId": "phone",
+      "start": "2026-01-06T22:30:00-05:00[America/New_York]",
+      "end": "2026-01-06T22:50:00-05:00[America/New_York]"
+    }
+  ],
+  "goals": [
+    {
+      "id": "g-caffeine",
+      "name": "Total caffeine under 400mg/day",
+      "what": {
+        "t": "tag",
+        "tags": [
+          "caffeine"
+        ],
+        "match": "any"
+      },
+      "when": {
+        "t": "calendar",
+        "unit": "day",
+        "tz": "America/New_York"
+      },
+      "aggregate": "sum",
+      "compare": "<=",
+      "target": 400,
+      "unit": "mg"
+    },
+    {
+      "id": "g-exercise",
+      "name": "150 minutes of exercise per week",
+      "what": {
+        "t": "tag",
+        "tags": [
+          "exercise"
+        ],
+        "match": "any",
+        "transitive": true
+      },
+      "when": {
+        "t": "calendar",
+        "unit": "week",
+        "tz": "America/New_York"
+      },
+      "aggregate": "duration",
+      "compare": ">=",
+      "target": 150
+    },
+    {
+      "id": "g-meds",
+      "name": "Did I take my meds today",
+      "what": {
+        "t": "tag",
+        "tags": [
+          "meds"
+        ],
+        "match": "any"
+      },
+      "when": {
+        "t": "calendar",
+        "unit": "day",
+        "tz": "America/New_York"
+      },
+      "aggregate": "exists",
+      "compare": ">",
+      "target": 0
+    },
+    {
+      "id": "g-dry",
+      "name": "Did I NOT drink this week",
+      "what": {
+        "t": "track",
+        "ids": [
+          "alcohol"
+        ]
+      },
+      "when": {
+        "t": "calendar",
+        "unit": "week",
+        "tz": "America/New_York"
+      },
+      "aggregate": "exists",
+      "compare": "==",
+      "target": 0
+    },
+    {
+      "id": "g-gym",
+      "name": "Exercise on 3 distinct days a week",
+      "what": {
+        "t": "tag",
+        "tags": [
+          "exercise"
+        ],
+        "match": "any",
+        "transitive": true
+      },
+      "when": {
+        "t": "calendar",
+        "unit": "week",
+        "tz": "America/New_York"
+      },
+      "aggregate": "distinct-days",
+      "compare": ">=",
+      "target": 3
+    },
+    {
+      "id": "g-screens",
+      "name": "No screens 1h before bedtime",
+      "what": {
+        "t": "tag",
+        "tags": [
+          "screens"
+        ],
+        "match": "any"
+      },
+      "when": {
+        "t": "derived",
+        "fromTrack": "bedtime",
+        "before": "PT1H"
+      },
+      "aggregate": "exists",
+      "compare": "==",
+      "target": 0
+    },
+    {
+      "id": "g-weekday-meds",
+      "name": "Meds on weekdays only",
+      "what": {
+        "t": "tag",
+        "tags": [
+          "meds"
+        ],
+        "match": "any"
+      },
+      "when": {
+        "t": "filter",
+        "of": {
+          "t": "calendar",
+          "unit": "day",
+          "tz": "America/New_York"
+        },
+        "pred": "is-weekday",
+        "tz": "America/New_York"
+      },
+      "aggregate": "exists",
+      "compare": ">",
+      "target": 0
+    }
+  ]
+}
