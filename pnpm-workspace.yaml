@@ -1,0 +1,8 @@
+packages:
+  - 'packages/*'
+  - 'apps/*'
+
+# pnpm 10 blocks lifecycle scripts by default; esbuild needs its postinstall to fetch
+# the platform binary, and Vite will not start without it.
+onlyBuiltDependencies:
+  - esbuild
