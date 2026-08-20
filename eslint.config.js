@@ -28,5 +28,15 @@ export default tseslint.config(
   { ignores: ['**/dist/**', '**/dev-dist/**', '**/node_modules/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    rules: {
+      // Underscore prefix is the conventional "deliberately discarded" marker, and is
+      // how object rest is used to drop a field.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
+    },
+  },
   frameworkFree,
 )
