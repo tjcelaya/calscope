@@ -60,15 +60,30 @@ describe('interval algebra', () => {
     )
   })
 
-  it('intersect is commutative and associative', () => {
+  it('intersect covers the same POINT SET regardless of operand order', () => {
+    // intersect is deliberately asymmetric -- the left operand supplies window
+    // structure, the right is only a mask -- so commutativity holds on the covered
+    // point set rather than on the window subdivision.
     fc.assert(
       fc.property(arbSet, arbSet, arbSet, (a, b, c) => {
-        expect(asPairs(intersect(a, b))).toEqual(asPairs(intersect(b, a)))
-        expect(asPairs(intersect(intersect(a, b), c))).toEqual(
-          asPairs(intersect(a, intersect(b, c))),
+        expect(asPairs(normalize(intersect(a, b)))).toEqual(asPairs(normalize(intersect(b, a))))
+        expect(asPairs(normalize(intersect(intersect(a, b), c)))).toEqual(
+          asPairs(normalize(intersect(a, intersect(b, c)))),
         )
       }),
     )
+  })
+
+  it('intersect keeps the LEFT operand window structure', () => {
+    // Three daily windows masked by one long span stay three windows...
+    const days = [iv(0, 10), iv(10, 20), iv(20, 30)]
+    expect(asPairs(intersect(days, [iv(5, 25)]))).toEqual([
+      [5, 10],
+      [10, 20],
+      [20, 25],
+    ])
+    // ...but with the operands swapped, the single span stays a single window.
+    expect(asPairs(intersect([iv(5, 25)], days))).toEqual([[5, 25]])
   })
 
   it('difference is exact at boundaries: |a| = |a-b| + |a and b|', () => {

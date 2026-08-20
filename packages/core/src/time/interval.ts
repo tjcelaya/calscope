@@ -75,6 +75,13 @@ export function union(a: readonly Interval[], b: readonly Interval[]): Interval[
  * Clip each window in `a` against the point set `b`, keeping the pieces of distinct
  * windows separate. A daily schedule intersected with work hours yields one window per
  * day, not a single merged run.
+ *
+ * DELIBERATELY ASYMMETRIC. The left operand supplies the window structure; the right
+ * acts only as a mask. `intersect(daily, workHours)` gives one window per day, whereas
+ * `intersect(workHours, daily)` gives one window per work-hours block. The covered
+ * POINT SET is identical either way -- only the subdivision differs -- so
+ * `normalize(intersect(a, b))` is commutative and associative even though
+ * `intersect` itself is not. Property-tested as such.
  */
 export function intersect(a: readonly Interval[], b: readonly Interval[]): Interval[] {
   const mask = normalize(b)

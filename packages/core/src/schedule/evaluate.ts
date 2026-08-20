@@ -75,6 +75,8 @@ export function occurrences(
         [],
       )
 
+    // Window structure follows the FIRST schedule; later ones act as masks. See the
+    // note on `intersect` in time/interval.ts.
     case ScheduleKind.Intersect: {
       if (schedule.of.length === 0) return []
       const [head, ...rest] = schedule.of
