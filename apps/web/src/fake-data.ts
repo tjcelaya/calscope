@@ -18,6 +18,20 @@ export type FakeEntry = {
 
 export const TIME_ZONE = 'America/New_York'
 
+/**
+ * Spike-fidelity coordinates for the fixture zone (NYC). The real app derives these from
+ * the IANA zone via a zone1970.tab-based table, refined by optional Geolocation.
+ */
+export const LAT = 40.71
+export const LNG = -74.01
+
+/**
+ * Where the fixture "lives", for day/night shading. Solar position is pure astronomy --
+ * computed locally, no lookup service. The real app's chain: explicit home setting ->
+ * browser geolocation (never leaves the device) -> tz representative coords -> flat.
+ */
+export const HOME = { lat: 40.7128, lon: -74.006 }
+
 export const tracks: FakeTrack[] = [
   { id: 'sleep', name: 'Sleep', color: '#6c7bff' },
   { id: 'coffee', name: 'Coffee', color: '#d98b45' },

@@ -70,6 +70,7 @@ scribcal needs no new integration code.
 | Geometry | `d3-shape` / `d3-scale` — **math only** | `d3.arc()` generates the radial arcs. Solid owns the DOM; d3 never touches it |
 | Virtualization | `@tanstack/solid-virtual` *(planned, not yet installed)* | Headless — returns indices and offsets, renders nothing, which is what lets it drive SVG cells. Framework-agnostic core with per-framework adapters |
 | Gestures | `@use-gesture/vanilla` | No framework adapter needed |
+| Daylight | `suncalc` (spike; NOAA-style calc may move into `packages/views` in M2) | Sunrise/sunset is pure astronomy, computed locally. **No network service**: an offline-first app must not have its background depend on a free endpoint staying up. Coordinates come from the IANA zone itself — tzdb's `zone1970.tab` ships a representative lat/lng per zone — with browser Geolocation as an optional refinement |
 | App state | Solid signals — **no state library** | Only raw UI state is reactive (~5 values); everything derived is a pure function |
 | Validation | `valibot` | ~2KB; schemas derive from the same enum constants |
 | Tests | `vitest` + `fast-check` | Property tests on the interval and selector algebras and the op-log fold. **Gap: the `Schedule` evaluator has example-based tests only** — worth closing |
@@ -317,6 +318,24 @@ path-string assertions all passed while the pixels were wrong or invisible:
   deliberately seeded by day *index*, not date, so scenarios differ only in their DST marks —
   a controlled comparison, but it means those marks must carry real visual weight.
 
+Second round, after the encoding prototype shipped:
+
+- **12h mode collapsed every day but the first into the PM sub-band.** Sub-band selection
+  compared the raw *grid* slot (hours from day 0's midnight) against 12, so day 3's 9am
+  (slot 81) landed in PM. Spotted from a phone screenshot as "read appears to overlap other
+  events". Fixed: `subBandForSlot` reduces to within-day time first; regression tests cover
+  multi-day placement.
+- **Interval-inside-interval was ambiguous under overpainting** — a meeting drawn over work
+  reads as "meeting replaces work". Answered with a fifth channel: **radial inset encodes
+  containment**. Depth = number of strictly-longer intervals fully containing the mark; each
+  level insets the band (18% per level, capped), so the container stays visible on both
+  radial sides of the contained. Deterministic, order-independent. *Partial* overlap (the
+  16:30 meeting straddling work's end) still overpaints — open.
+- **Ring backgrounds now carry the day's actual light** (night / civil twilight / daylight),
+  which also turns out to be the best AM/PM affordance found so far: in 12h mode the two
+  sub-bands show different light at the same angle, so 9am and 9pm content stop looking
+  like neighbours.
+
 ### Mark encoding and facet emphasis (all views)
 
 Concurrent truths need separate visual channels, or they occlude each other. A day can
@@ -480,8 +499,17 @@ already proven and carries over.
 - [ ] **Ongoing property**: an ongoing entry's mark ends at `angle(now)`; advancing `now`
       moves only ongoing marks and the now-line, nothing else. `now` is a parameter, never
       a clock read inside views.
-- [ ] Interval-vs-interval overlap has a deterministic lane rule (the `lane` parameter on
-      `markFor`), stable across re-renders so the layout does not shuffle as data arrives.
+- [ ] Interval-vs-interval **containment** renders as radial inset (depth = count of
+      strictly-longer containers; deterministic and order-independent), so nesting is
+      unambiguous. *Partial* overlap gets an explicit rule — inset does not cover it and
+      overpainting is not acceptable as the final answer.
+- [ ] Sub-band placement uses **within-day** time on every day (regression: raw grid slots
+      collapsed all days but the first into PM).
+- [ ] **Daylight ring backgrounds**: night/twilight/day segments per day from a local solar
+      calculation; coordinates derived from the IANA zone via a `zone1970.tab` table, with
+      optional Geolocation refinement; polar day/night degrades to a flat band, never
+      garbage. Segments respect 12h sub-bands. Evaluate whether this closes the AM/PM
+      affordance question and record the verdict in section 5.
 - [ ] Facet emphasis dims (≈0.12 opacity) and never removes: mark count is identical under
       every emphasis value.
 - [ ] Goal-window marks (stroke-only outline; `Pending` dashed) render from `GoalResult`,
@@ -663,7 +691,9 @@ written. Fixture shape: `{ tz?, tags[], tracks[], entries[], goals[], routines[]
 - Schedule/selector editor UX (M5) is the biggest unknown in the project.
 - Missed-state encoding (stroke channel) is undesigned; goal-window outline marks need the
   engine and land in M2.
-- Deep interval overlap (4+): lane insetting vs opacity stacking is unresolved; the spike
-  only proves 3-deep with an instant as the innermost layer.
+- Deep interval overlap (4+): inset nesting is proven to 3-deep (instant innermost);
+  beyond that, and for *partial* overlaps, the encoding is unresolved.
+- Polar day/night: the daylight background currently degrades to a flat band above the
+  arctic circles; a real treatment is undesigned.
 - Browser-only OAuth gets **no refresh token**, so sync only happens while the app is open.
   If that becomes annoying the fix is a ~150-line token broker, not a redesign.

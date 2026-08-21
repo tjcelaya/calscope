@@ -63,10 +63,16 @@ export function angleForSlot(slot: number, hoursPerRevolution: 24 | 12): number 
 /**
  * Which sub-band a slot falls in. Always 0 in 24h mode; in 12h mode, 0 = AM, 1 = PM,
  * which is how a day gets its "1 or 2 circles".
+ *
+ * Reduces to the WITHIN-DAY time first. Callers pass grid slots (hours from day 0's
+ * midnight), and comparing those raw against 12 put every mark on every day but the
+ * first into the PM band -- caught in the field as "everything looks overlapped in
+ * 12h mode".
  */
 export function subBandForSlot(slot: number, hoursPerRevolution: 24 | 12): 0 | 1 {
   if (hoursPerRevolution === HOURS_PER_DAY) return 0
-  return slot < 12 ? 0 : 1
+  const withinDay = ((slot % HOURS_PER_DAY) + HOURS_PER_DAY) % HOURS_PER_DAY
+  return withinDay < 12 ? 0 : 1
 }
 
 /** Fraction of a band's thickness kept clear between the AM and PM sub-bands. */
@@ -173,7 +179,6 @@ export function anomalyGeometry(
   const per = config.hoursPerRevolution
   const start = day.anomaly.slotIndex
   const magnitudeHours = Math.abs(day.anomaly.delta.total({ unit: 'hour' }))
-  const band = subBand(ring, subBandForSlot(start % per, per), per)
   const sweep = (magnitudeHours / per) * TAU
 
   // AtDayEnd cannot mean "after 24:00" on a ring -- the circle closes, so that angle IS
@@ -183,6 +188,10 @@ export function anomalyGeometry(
   const atDayEnd = start >= HOURS_PER_DAY
   const a0 = atDayEnd ? TAU - sweep : angleForSlot(start, per)
   const a1 = a0 + sweep
+  // A day-end mark occupies the last hour of the day, so in 12h mode it belongs to the
+  // PM sub-band -- slot 24 would mod to 0 and land it in AM.
+  const bandSlot = atDayEnd ? HOURS_PER_DAY - magnitudeHours : start
+  const band = subBand(ring, subBandForSlot(bandSlot, per), per)
 
   if (day.shape === 'long') {
     // Stepped outside the band: the repeated hour is additional to a closed ring.

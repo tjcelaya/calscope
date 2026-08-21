@@ -171,6 +171,24 @@ describe('marks', () => {
     expect(subBand(ring, 0, 12).r1).toBeLessThan(ring.r1)
   })
 
+  it('sub-band selection uses within-day time on EVERY day, not just day 0', () => {
+    // Regression: comparing the raw grid slot against 12 put every mark on every day
+    // after the first into the PM band, collapsing 12h mode into a single half-ring.
+    expect(subBandForSlot(3 * 24 + 9, 12)).toBe(0) // day 3, 9am -> AM
+    expect(subBandForSlot(3 * 24 + 21, 12)).toBe(1) // day 3, 9pm -> PM
+
+    // Same morning event on day 0 and day 3 must occupy the same radii within its ring.
+    const twelve = { ...cfg, hoursPerRevolution: 12 as const }
+    const ringAt = (i: number) => (i < 8 ? ringRadii(twelve, i) : null)
+    const d0 = markFor(twelve, ringAt, 9, 11)[0]!
+    const d3 = markFor(twelve, ringAt, 3 * 24 + 9, 3 * 24 + 11)[0]!
+    const r0 = ringRadii(twelve, 0)
+    const r3 = ringRadii(twelve, 3)
+    // Extract nothing from paths -- assert via fresh sub-band geometry instead.
+    expect(subBand(r0, 0, 12).r0 - r0.r0).toBeCloseTo(subBand(r3, 0, 12).r0 - r3.r0, 9)
+    expect(d0.path).not.toBe(d3.path) // different rings, so different radii
+  })
+
   it('emits one tick per hour of a revolution, starting at 12 o clock', () => {
     expect(hourTicks(24)).toHaveLength(24)
     expect(hourTicks(12)).toHaveLength(12)

@@ -13,10 +13,12 @@
     "@calscope/views": "workspace:*",
     "@use-gesture/vanilla": "^10.3.1",
     "solid-js": "^1.9.3",
+    "suncalc": "^2.0.1",
     "temporal-polyfill": "^0.3.0"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
+    "@types/suncalc": "^1.9.2",
     "vite": "^6.0.5",
     "vite-plugin-pwa": "^0.21.1",
     "vite-plugin-solid": "^2.11.0"

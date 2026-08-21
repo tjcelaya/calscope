@@ -77,8 +77,14 @@ input[type='range'] { padding: 0; accent-color: #6c7bff; }
 
 .stage svg { display: block; width: 100%; height: auto; max-height: 74vh; }
 
-.band { stroke: var(--band); }
-.mark { stroke: rgba(0, 0, 0, 0.35); stroke-width: 0.4; }
+/* Ring backgrounds carry the day's actual light -- subtle luminance steps so marks
+   still dominate. In 12h mode this doubles as the AM/PM affordance. */
+.ringbg.bg-night { fill: #161a24; }
+.ringbg.bg-twilight { fill: #212839; }
+.ringbg.bg-day { fill: #2b3448; }
+
+/* A crisp boundary on every interval so adjacent/nested arcs never smear together. */
+.mark { stroke: #11131a; stroke-width: 0.7; }
 
 .tick { stroke: var(--line); stroke-width: 0.5; }
 .tick.major { stroke: #39415a; stroke-width: 1; }
@@ -118,6 +124,9 @@ input[type='range'] { padding: 0; accent-color: #6c7bff; }
 .mark, .instant-tick, .now-line { transition: opacity 0.15s ease; }
 
 .swatch-instant { background: transparent; border-left: 3px solid var(--muted); border-radius: 0; width: 3px; }
+.swatch-day { background: #2b3448; }
+.swatch-twilight { background: #212839; }
+.swatch-night { background: #161a24; border: 1px solid var(--line); }
 .swatch-ongoing { background: rgba(63, 167, 160, 0.45); border: 1px dashed #3fa7a0; }
 
 footer { display: flex; flex-direction: column; gap: 10px; }

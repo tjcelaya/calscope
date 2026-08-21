@@ -10,10 +10,16 @@ import {
   radialExtent,
   ringRadii,
   slotPosition,
+  subBand,
+  subBandForSlot,
   virtualDay,
+  type Ring,
 } from '@calscope/views'
 import { Gesture } from '@use-gesture/vanilla'
+import { daylightSegments, type DaylightClass } from './daylight'
 import {
+  LAT,
+  LNG,
   SCENARIOS,
   TIME_ZONE,
   generate,
@@ -38,11 +44,18 @@ type Emphasis = (typeof Emphasis)[keyof typeof Emphasis]
 /**
  * The spike's mark encoding, prototyping the channel split the real views must commit to:
  * fill = track identity; SHAPE = kind (instant -> radial tick, interval -> arc, ongoing ->
- * arc to `now` with a dashed leading edge); stroke/pattern = state (hatched void).
+ * arc to `now` with a dashed leading edge); stroke/pattern = state (hatched void); and
+ * RADIAL INSET = containment, so "meeting inside work" nests instead of overpainting.
  */
 type RenderMark =
   | { kind: 'arc'; path: string; color: string; ongoing: boolean }
   | { kind: 'tick'; angleDeg: number; r0: number; r1: number; color: string }
+
+type RenderBg = { path: string; cls: DaylightClass }
+
+/** Fraction of band thickness removed per containment level, capped so 3-deep stays visible. */
+const INSET_PER_DEPTH = 0.18
+const MAX_INSET = 0.36
 
 export function RadialSpike() {
   // Raw UI state only -- everything derived below is a pure function of these.
@@ -90,6 +103,32 @@ export function RadialSpike() {
     const dayList = days()
     const ringAt = (i: number) => (i >= 0 && i < dayList.length ? ringRadii(cfg, i) : null)
 
+    // --- Containment depth: how many strictly-longer intervals fully contain this one.
+    // Drives the radial inset, so "meeting inside work" reads as nesting, with the
+    // container visible on both radial sides, rather than as overpainting.
+    type Span = { idx: number; s: number; e: number }
+    const spans: Span[] = []
+    entries().forEach((entry, idx) => {
+      const dayIndex = dayList.findIndex((d) => d.date.equals(entry.start.toPlainDate()))
+      if (dayIndex < 0) return
+      if (!entry.ongoing && entry.endHours === 0) return
+      const s = dayIndex * 24 + slotPosition(entry.start)
+      const e = entry.ongoing ? dayIndex * 24 + nowSlot() : s + entry.endHours
+      spans.push({ idx, s, e })
+    })
+    const depthOf = new Map<number, number>()
+    for (const a of spans) {
+      const depth = spans.filter(
+        (b) => b.idx !== a.idx && b.s <= a.s && a.e <= b.e && b.e - b.s > a.e - a.s,
+      ).length
+      depthOf.set(a.idx, depth)
+    }
+    const insetRing = (ring: Ring, depth: number): Ring => {
+      const t = ring.r1 - ring.r0
+      const k = Math.min(depth * INSET_PER_DEPTH, MAX_INSET) * t
+      return { r0: ring.r0 + k, r1: ring.r1 - k }
+    }
+
     // Marks are collected per ring rather than per entry, because an event that crosses
     // midnight contributes geometry to two different rings.
     const marksByDay = new Map<number, RenderMark[]>()
@@ -99,35 +138,38 @@ export function RadialSpike() {
       marksByDay.set(dayIndex, bucket)
     }
 
-    for (const entry of entries()) {
+    entries().forEach((entry, idx) => {
       const dayIndex = dayList.findIndex((d) => d.date.equals(entry.start.toPlainDate()))
-      if (dayIndex < 0) continue
+      if (dayIndex < 0) return
 
       const color = trackColor.get(entry.trackId) ?? '#888'
       const startSlot = dayIndex * 24 + slotPosition(entry.start)
 
       // Instants are radial TICKS, not micro-arcs: a shape channel, so a point-in-time
-      // stays visible inside any interval that contains it. (Spans the full ring band;
-      // the 12h sub-band nuance is deliberately ignored at spike fidelity.)
+      // stays visible inside any interval that contains it. Placed in its 12h sub-band.
       if (!entry.ongoing && entry.endHours === 0) {
         const ring = ringAt(dayIndex)!
+        const sb = subBand(ring, subBandForSlot(slotPosition(entry.start), per), per)
         push(dayIndex, {
           kind: 'tick',
           angleDeg: (angleForSlot(slotPosition(entry.start), per) * 180) / Math.PI,
-          r0: ring.r0,
-          r1: ring.r1,
+          r0: sb.r0,
+          r1: sb.r1,
           color,
         })
-        continue
+        return
       }
 
-      const endSlot = entry.ongoing
-        ? dayIndex * 24 + nowSlot()
-        : startSlot + entry.endHours
+      const endSlot = entry.ongoing ? dayIndex * 24 + nowSlot() : startSlot + entry.endHours
+      const depth = depthOf.get(idx) ?? 0
+      const ringAtInset = (i: number) => {
+        const ring = ringAt(i)
+        return ring ? insetRing(ring, depth) : null
+      }
 
       // Slots are measured from the grid origin (day 0 midnight), so markFor's
       // dayOffset already IS the absolute ring index -- do not add dayIndex again.
-      for (const mark of markFor(cfg, ringAt, startSlot, endSlot)) {
+      for (const mark of markFor(cfg, ringAtInset, startSlot, endSlot)) {
         push(mark.dayOffset, {
           kind: 'arc',
           path: mark.path,
@@ -135,13 +177,24 @@ export function RadialSpike() {
           ongoing: entry.ongoing === true,
         })
       }
-    }
+    })
 
     return dayList.map((day, dayIndex) => {
       const ring = ringRadii(cfg, dayIndex)
+      // Ring background = the day's actual light: night / twilight / daylight, computed
+      // locally. Doubles as the AM/PM affordance in 12h mode -- the AM sub-band shows
+      // night-into-morning, the PM sub-band afternoon-into-night, at the same angles.
+      const ringOnly = (i: number) => (i === dayIndex ? ring : null)
+      const bg: RenderBg[] = daylightSegments(day.date, TIME_ZONE, LAT, LNG).flatMap((seg) =>
+        markFor(cfg, ringOnly, dayIndex * 24 + seg.from, dayIndex * 24 + seg.to).map((m) => ({
+          path: m.path,
+          cls: seg.cls,
+        })),
+      )
       return {
         day,
         ring,
+        bg,
         anomaly: anomalyGeometry(cfg, ring, day),
         marks: marksByDay.get(dayIndex) ?? [],
       }
@@ -157,7 +210,11 @@ export function RadialSpike() {
   const nowAngleDeg = createMemo(
     () => (angleForSlot(nowSlot(), config().hoursPerRevolution) * 180) / Math.PI,
   )
-  const lastRing = createMemo(() => ringRadii(config(), rings() - 1))
+  const nowBand = createMemo(() => {
+    const cfg = config()
+    const ring = ringRadii(cfg, rings() - 1)
+    return subBand(ring, subBandForSlot(nowSlot(), cfg.hoursPerRevolution), cfg.hoursPerRevolution)
+  })
 
   const anomalousDays = createMemo(() => days().filter((d) => d.shape !== 'normal'))
 
@@ -257,12 +314,9 @@ export function RadialSpike() {
           <For each={bands()}>
             {(band) => (
               <g>
-                <path
-                  d={ringTrack(band.ring)}
-                  class="band"
-                  fill="none"
-                  stroke-width={band.ring.r1 - band.ring.r0}
-                />
+                <For each={band.bg}>
+                  {(seg) => <path d={seg.path} class={`ringbg bg-${seg.cls}`} />}
+                </For>
                 <For each={band.marks}>
                   {(mark) =>
                     mark.kind === 'arc' ? (
@@ -299,8 +353,8 @@ export function RadialSpike() {
           {/* "Now" on the most recent ring -- doubles as the ongoing arc's leading edge. */}
           <g transform={`rotate(${nowAngleDeg()})`}>
             <line
-              y1={-(lastRing().r0 - 4)}
-              y2={-(lastRing().r1 + 4)}
+              y1={-(nowBand().r0 - 4)}
+              y2={-(nowBand().r1 + 4)}
               classList={{ 'now-line': true, dim: emphasis() === Emphasis.Instants || emphasis() === Emphasis.Durations }}
             />
           </g>
@@ -323,6 +377,9 @@ export function RadialSpike() {
           <span class="chip"><i class="swatch-ongoing" />ongoing → now</span>
           <span class="chip"><i class="swatch-spur" />repeated hour (spur)</span>
           <span class="chip"><i class="swatch-void" />skipped hour (void)</span>
+          <span class="chip"><i class="swatch-day" />daylight</span>
+          <span class="chip"><i class="swatch-twilight" />twilight</span>
+          <span class="chip"><i class="swatch-night" />night</span>
         </div>
 
         <Show
@@ -347,12 +404,6 @@ export function RadialSpike() {
 
 function clamp(n: number): number {
   return Math.max(MIN_RINGS, Math.min(MAX_RINGS, n))
-}
-
-/** Centre-line circle of a band, stroked to its full thickness as the empty-day backdrop. */
-function ringTrack(ring: { r0: number; r1: number }): string {
-  const r = (ring.r0 + ring.r1) / 2
-  return `M 0 ${-r} A ${r} ${r} 0 1 1 0 ${r} A ${r} ${r} 0 1 1 0 ${-r}`
 }
 
 export type { Temporal }
