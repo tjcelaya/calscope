@@ -32,7 +32,7 @@ function arg(name: string): string | undefined {
 
 const path = process.argv[2]
 if (!path || path.startsWith('--')) {
-  console.error('usage: whenn-eval <fixture.json> [--from DATE] [--to DATE] [--now ISO]')
+  console.error('usage: calscope-eval <fixture.json> [--from DATE] [--to DATE] [--now ISO]')
   console.error('example: pnpm eval packages/core/fixture.example.json --from 2026-01-05 --to 2026-01-12')
   process.exit(1)
 }

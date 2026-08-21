@@ -1,12 +1,12 @@
 {
-  "name": "@whenn/core",
+  "name": "@calscope/core",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
-  "bin": { "whenn-eval": "./bin/eval.ts" },
+  "bin": { "calscope-eval": "./bin/eval.ts" },
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b"

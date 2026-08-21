@@ -7,7 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa'
  * normally unset and the bundle stays root-relative.
  *
  * It is kept because self-hosting is a stated goal of the project: anyone serving this
- * under a subpath -- https://example.com/whenn/ -- needs the prefix baked into asset
+ * under a subpath -- https://example.com/calscope/ -- needs the prefix baked into asset
  * URLs and into the PWA manifest, or the page 404s on its own JS and the service worker
  * silently loses scope.
  */
@@ -20,14 +20,14 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'whenn',
-        short_name: 'whenn',
+        name: 'calscope',
+        short_name: 'calscope',
         description: 'Goals, events and routines on one composable model.',
         theme_color: '#11131a',
         background_color: '#11131a',
         display: 'standalone',
         // Both must track `base`: a service worker cannot control pages outside its scope,
-        // so a '/' scope on a '/whenn/' deployment silently disables offline support.
+        // so a '/' scope on a '/calscope/' deployment silently disables offline support.
         start_url: base,
         scope: base,
       },

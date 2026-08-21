@@ -1,5 +1,5 @@
 {
-  "name": "@whenn/web",
+  "name": "@calscope/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
-    "@whenn/views": "workspace:*",
+    "@calscope/views": "workspace:*",
     "@use-gesture/vanilla": "^10.3.1",
     "solid-js": "^1.9.3",
     "temporal-polyfill": "^0.3.0"

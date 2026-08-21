@@ -1,17 +1,17 @@
-# whenn
+# calscope
 
 A local-first tool for **goals, events, and routines** on one composable model, rendered
 through three quite different calendar views.
 
 It is an installable PWA served as static files — self-hostable by anyone, no accounts, no
-database to run. Google Calendar is a **peer store**: whenn reads and writes it, but is
+database to run. Google Calendar is a **peer store**: calscope reads and writes it, but is
 no more canonical than it is.
 
 ---
 
 ## 1. What it is for
 
-Most habit trackers can express "did I do this today" and nothing else. whenn exists to
+Most habit trackers can express "did I do this today" and nothing else. calscope exists to
 express the things that actually describe a life:
 
 - **Did this occur — or deliberately *not* occur — inside a window?**
@@ -47,13 +47,13 @@ interpreted per view, so switching views preserves your sense of scale.
 
 [`tjcelaya/scribcal-android`](https://github.com/tjcelaya/scribcal-android) is an existing
 Kotlin app that captures events and writes them to Google Calendar, and holds real event
-history that whenn must visualise. Its Room schema is whenn's model in embryo
+history that calscope must visualise. Its Room schema is calscope's model in embryo
 (`EventType`→`Track`, `Cadence`→`ValueType`, and an `Event` with the identical
 instant/ongoing/completed states), so nothing needs redesigning to accept that history.
 
 **Division of labour:** scribcal stays a capture client for the one thing a PWA genuinely
 cannot do — hold a persistent silent notification you can stop a running timer from.
-whenn owns the model, goals, and views. Google Calendar is the bus between them, and
+calscope owns the model, goals, and views. Google Calendar is the bus between them, and
 scribcal needs no new integration code.
 
 ---
@@ -304,15 +304,16 @@ builds with `BASE_PATH=/${{ github.event.repository.name }}/` — derived from t
 at build time rather than hardcoded, so a future rename does not silently break the deploy.
 `apps/web/vite.config.ts` feeds it to Vite's `base` *and* to the PWA manifest's `start_url`
 and `scope` — a service worker cannot control pages outside its scope, so a `/` scope on a
-`/whenn/` deployment would silently disable offline support. Local dev and `vite preview`
+`/calscope/` deployment would silently disable offline support. Local dev and `vite preview`
 stay at `/`.
 
 **This origin matters for M1.5:** `https://<user>.github.io` must be an authorized JavaScript
 origin on the Google OAuth web client.
 
 *(An earlier revision of this section targeted Cloudflare Pages, while the repo was still
-private and GitHub Pages was unavailable on the Free plan. Reverted along with the rest of
-the `timeslife` → `whenn` rename, once the repo went public.)*
+private and GitHub Pages was unavailable on the Free plan. Reverted once the repo went
+public. The project itself was renamed twice in the same span — `timeslife` → `whenn` →
+`calscope` — this section, the package names, and the manifest all reflect the current one.)*
 
 An updated `ci.yml` may sit in `.github/workflows-pending/` when a session lacked GitHub's
 `workflow` scope and could not write it directly. Activate with:
@@ -494,7 +495,7 @@ genuinely destructive thing this app does.
 - Per-track `calendarId` routing; managed-calendar creation.
 - **API constraint:** `Calendars`/`CalendarList` resources have **no `extendedProperties`** —
   only `Events` do. Identify managed calendars with a marker line in the `description`
-  (`x-whenn:v1:<uuid>`), discovered via a `calendarList.list` scan. Do not use a naming
+  (`x-calscope:v1:<uuid>`), discovered via a `calendarList.list` scan. Do not use a naming
   convention on the display name.
 
 **Acceptance criteria**

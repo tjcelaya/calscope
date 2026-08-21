@@ -1,10 +1,10 @@
-# whenn
+# calscope
 
 A local-first tool for **goals, events, and routines** on one composable model, rendered
 through three calendar views: a **radial** view of concentric day-rings, a **vertical**
 year/month scroll, and **horizontal** day columns.
 
-Most habit trackers can express "did I do this today" and nothing else. whenn is built
+Most habit trackers can express "did I do this today" and nothing else. calscope is built
 around the things that actually describe a life:
 
 - Did this occur — or deliberately **not** occur — inside a window?
@@ -13,7 +13,7 @@ around the things that actually describe a life:
 - …where the window itself may be on its own complex schedule.
 
 It ships as an installable PWA served from static files — self-hostable by anyone, no
-accounts, no database to run. Google Calendar is a peer store: whenn reads and writes it,
+accounts, no database to run. Google Calendar is a peer store: calscope reads and writes it,
 but is no more canonical than it is.
 
 ## Status

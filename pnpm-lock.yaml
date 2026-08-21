@@ -35,12 +35,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@calscope/views':
+        specifier: workspace:*
+        version: link:../../packages/views
       '@use-gesture/vanilla':
         specifier: ^10.3.1
         version: 10.3.1
-      '@whenn/views':
-        specifier: workspace:*
-        version: link:../../packages/views
       solid-js:
         specifier: ^1.9.3
         version: 1.9.15

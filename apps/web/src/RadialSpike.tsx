@@ -10,7 +10,7 @@ import {
   ringRadii,
   slotPosition,
   virtualDay,
-} from '@whenn/views'
+} from '@calscope/views'
 import { Gesture } from '@use-gesture/vanilla'
 import { SCENARIOS, TIME_ZONE, generate, tracks, type ScenarioKey } from './fake-data'
 
@@ -97,7 +97,7 @@ export function RadialSpike() {
   return (
     <div class="spike">
       <header>
-        <h1>whenn — radial spike</h1>
+        <h1>calscope — radial spike</h1>
         <p class="sub">
           M0.5. Fake data, no engine, no persistence. Exists to answer two questions: does a ring
           stay legible past ~7 days, and does the spur read as information or as a rendering bug?
