@@ -3,9 +3,13 @@ import solid from 'vite-plugin-solid'
 import { VitePWA } from 'vite-plugin-pwa'
 
 /**
- * A GitHub Pages *project* site is served from https://<user>.github.io/<repo>/, not from
- * the domain root, so every asset URL needs that prefix or the deployed page 404s on its
- * own JS. CI sets BASE_PATH; local dev and `vite preview` stay at '/'.
+ * Deploys serve from the root of their own subdomain (Cloudflare Pages), so BASE_PATH is
+ * normally unset and the bundle stays root-relative.
+ *
+ * It is kept because self-hosting is a stated goal of the project: anyone serving this
+ * under a subpath -- https://example.com/timeslife/ -- needs the prefix baked into asset
+ * URLs and into the PWA manifest, or the page 404s on its own JS and the service worker
+ * silently loses scope.
  */
 const base = process.env.BASE_PATH ?? '/'
 

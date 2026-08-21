@@ -37,30 +37,19 @@ jobs:
       - name: Test
         run: pnpm test
 
-      # A project Pages site lives at /<repo>/, so the deployed bundle needs that prefix
-      # baked in. Built once here and handed to the deploy job as an artifact.
+      # No BASE_PATH: Cloudflare Pages serves from the root of its own subdomain, so the
+      # bundle stays root-relative. (vite.config.ts still honours BASE_PATH for anyone
+      # self-hosting under a subpath -- see docs/PLAN.md.)
       - name: Build
         run: pnpm build
-        env:
-          BASE_PATH: /${{ github.event.repository.name }}/
 
-      - name: Upload Pages artifact
+      # Deploying from this job rather than a separate one means the bytes published are
+      # exactly the bytes just built and tested -- no artifact round-trip, no rebuild.
+      # Steps are sequential, so a failed test never reaches this.
+      - name: Deploy to Cloudflare Pages
         if: github.ref_name == github.event.repository.default_branch
-        uses: actions/upload-pages-artifact@v3
+        uses: cloudflare/wrangler-action@v3
         with:
-          path: apps/web/dist
-
-  deploy:
-    # Only the default branch publishes, and only behind green tests.
-    if: github.ref_name == github.event.repository.default_branch
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/web/dist --project-name=timeslife --branch=${{ github.ref_name }}

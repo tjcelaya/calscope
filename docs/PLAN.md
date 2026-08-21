@@ -291,20 +291,26 @@ These are load-bearing. Each was arrived at by getting it wrong first.
 
 ### CI and hosting
 
-`.github/workflows/ci.yml` runs lint → typecheck → test → build on every push and PR, and
-deploys the built PWA to GitHub Pages from the default branch.
+`.github/workflows/ci.yml` runs lint → typecheck → test → build on every push and PR, then
+deploys to **Cloudflare Pages** from the default branch. Deploy is a step in the same job as
+the tests, so the bytes published are exactly the bytes just built and tested.
 
-Deployment uses the Actions-based Pages flow (`upload-pages-artifact` + `deploy-pages`) —
-no `gh-pages` branch to force-push and no Jekyll to disable. It requires the one-time repo
-setting **Settings → Pages → Source: GitHub Actions**.
+**Not GitHub Pages:** it only publishes from public repositories on the Free plan. Cloudflare
+Pages is free with private repos, and it is where the project is heading anyway — the sync
+relay below is specced as a Cloudflare Worker + Durable Object, and the optional OAuth token
+broker is the same shape.
 
-**Base path.** A project Pages site is served from `https://<user>.github.io/<repo>/`, so
-CI builds with `BASE_PATH=/<repo>/`. `apps/web/vite.config.ts` reads it and feeds it to
-Vite's `base` *and* to the PWA manifest's `start_url` and `scope` — a service worker cannot
-control pages outside its scope, so a `/` scope on a `/timeslife/` deployment would silently
-disable offline support. Local dev and `vite preview` stay at `/`.
+Requires two repo secrets, `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, and a Pages
+project named `timeslife` created as **Direct Upload** — CI pushes the build itself, so
+Cloudflare never needs repository access.
 
-**This origin matters for M1.5:** `https://<user>.github.io` must be an authorized
+**Base path.** Cloudflare Pages serves from the root of its own subdomain, so `BASE_PATH` is
+unset and the bundle is root-relative. The mechanism is kept for self-hosters: serving under
+a subpath needs the prefix in both Vite's `base` *and* the PWA manifest's `start_url` and
+`scope`, because a service worker cannot control pages outside its scope — a `/` scope on a
+`/timeslife/` deployment silently disables offline support with nothing failing loudly.
+
+**This origin matters for M1.5:** `https://timeslife.pages.dev` must be an authorized
 JavaScript origin on the Google OAuth web client.
 
 An updated `ci.yml` may sit in `.github/workflows-pending/` when a session lacked GitHub's
