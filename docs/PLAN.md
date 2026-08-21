@@ -289,15 +289,32 @@ These are load-bearing. Each was arrived at by getting it wrong first.
 - **Overlapping marks need z-order rules.** A long event painted after a short one hides it
   entirely. Needs explicit ordering or lane insetting. **Open.**
 
-### CI
+### CI and hosting
 
-`.github/workflows-pending/ci.yml` runs lint → typecheck → test → build. It is parked
-because the session token lacked GitHub's `workflow` scope. Activate with:
+`.github/workflows/ci.yml` runs lint → typecheck → test → build on every push and PR, and
+deploys the built PWA to GitHub Pages from the default branch.
+
+Deployment uses the Actions-based Pages flow (`upload-pages-artifact` + `deploy-pages`) —
+no `gh-pages` branch to force-push and no Jekyll to disable. It requires the one-time repo
+setting **Settings → Pages → Source: GitHub Actions**.
+
+**Base path.** A project Pages site is served from `https://<user>.github.io/<repo>/`, so
+CI builds with `BASE_PATH=/<repo>/`. `apps/web/vite.config.ts` reads it and feeds it to
+Vite's `base` *and* to the PWA manifest's `start_url` and `scope` — a service worker cannot
+control pages outside its scope, so a `/` scope on a `/timeslife/` deployment would silently
+disable offline support. Local dev and `vite preview` stay at `/`.
+
+**This origin matters for M1.5:** `https://<user>.github.io` must be an authorized
+JavaScript origin on the Google OAuth web client.
+
+An updated `ci.yml` may sit in `.github/workflows-pending/` when a session lacked GitHub's
+`workflow` scope and could not write it directly. Activate with:
 
 ```sh
 mkdir -p .github/workflows
-git mv .github/workflows-pending/ci.yml .github/workflows/ci.yml
-git commit -m 'Enable CI workflow' && git push
+git mv -f .github/workflows-pending/ci.yml .github/workflows/ci.yml
+rm -rf .github/workflows-pending
+git add -A && git commit -m 'Update CI workflow' && git push
 ```
 
 ---

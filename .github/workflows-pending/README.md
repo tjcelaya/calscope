@@ -1,20 +1,26 @@
 # Pending workflow
 
-`ci.yml` runs lint → typecheck → test → build on every push and pull request.
+`ci.yml` here supersedes `.github/workflows/ci.yml`. It adds a GitHub Pages deploy job on
+top of lint → typecheck → test → build.
 
-It lives here rather than in `.github/workflows/` because the token this session
-pushes with lacks GitHub's `workflow` scope, and the GitHub App has no write
-access to this repository — so neither path could create the file. Nothing is
-wrong with the workflow itself.
+It sits here because the token this session pushes with lacks GitHub's `workflow` scope,
+so it cannot write into `.github/workflows/`. Nothing is wrong with the file.
 
-To activate it:
+## Activate
 
 ```sh
-git mv .github/workflows-pending/ci.yml .github/workflows/ci.yml
-rmdir .github/workflows-pending 2>/dev/null || true
-git commit -m "Enable CI workflow"
-git push
+git mv -f .github/workflows-pending/ci.yml .github/workflows/ci.yml
+git rm -r --cached .github/workflows-pending 2>/dev/null || true
+rm -rf .github/workflows-pending
+git add -A && git commit -m "Deploy to GitHub Pages from CI" && git push
 ```
 
-Pushed from your own machine this succeeds, since your credentials carry the
-`workflow` scope.
+## One-time repo setting
+
+**Settings → Pages → Build and deployment → Source: GitHub Actions.**
+
+Without this the deploy job fails with a permissions error. This uses the Actions-based
+Pages flow rather than a `gh-pages` branch — no branch to force-push, no Jekyll to disable,
+and the artifact is built once by the job that already ran the tests.
+
+The site publishes at `https://<user>.github.io/<repo>/`. Only the default branch deploys.
