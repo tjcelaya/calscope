@@ -268,13 +268,21 @@ These are load-bearing. Each was arrived at by getting it wrong first.
 
 ## 5. Status
 
-**Done: M0, M0.5, M1.** 103 tests; lint, typecheck and build clean.
+**Done: M0, M0.5 (both field-review rounds), M1.** 106 tests; lint, typecheck and build
+clean. Live at **https://tjcelaya.github.io/calscope/** — every push to `main` with green
+tests deploys.
+
+**Next milestone: M1.5** (Google Calendar read path). A fresh agent should read section 4
+(invariants) and the field findings below before touching `packages/views` or the spike —
+several invariants were arrived at by getting them wrong first, and the findings record
+which "obvious" implementations are known-wrong.
 
 | Package | State |
 |---|---|
 | `packages/core` | Complete for M1: enums, valibot schemas, interval algebra, calendar windows, schedule evaluator, selector resolver, unit conversion, goal + routine evaluation, HLC, op log, `pnpm eval` CLI |
-| `packages/views` | `virtualDay()` + radial geometry only (from the spike). No `TimeScale` interface yet |
-| `apps/web` | Radial **spike** only — fake data, no engine, no persistence. Throwaway UI; the geometry it proved is the seed of `packages/views` |
+| `packages/views` | `virtualDay()` + radial geometry, hardened by two field-review rounds: anomaly at the correct wall-clock hour on both shapes, `AtDayEnd` abutting midnight on the ring, sub-band selection by within-day time. No `TimeScale` interface yet — that lands in M2 |
+| `apps/web` | Radial **spike** — fake data, no engine, no persistence — but it now *prototypes the M2 mark encoding*: instant ticks, ongoing-to-`now` arcs, containment inset, daylight ring backgrounds (suncalc + `daylight.ts`), facet-emphasis control, hatched void. The winners here get hardened into `packages/views` in M2 |
+| `packages/gcal`, `packages/ui` | Not created yet |
 
 ### Spike findings (M0.5)
 
@@ -367,13 +375,15 @@ engine.
 
 ### CI and hosting
 
-`.github/workflows/ci.yml` runs lint → typecheck → test → build on every push and PR, and
-deploys the built PWA to GitHub Pages from the default branch. The repo is public, which is
-what GitHub Pages requires on the Free plan.
+**Live and working — nothing to set up.** The repo is public at `tjcelaya/calscope`,
+default branch `main`. `.github/workflows/ci.yml` runs lint → typecheck → test → build on
+every push and PR; pushes to `main` with green tests additionally deploy to GitHub Pages at
+**https://tjcelaya.github.io/calscope/**. Deploy is gated behind the tests, so a red build
+never publishes.
 
 Deployment uses the Actions-based Pages flow (`upload-pages-artifact` + `deploy-pages`) —
-no `gh-pages` branch to force-push and no Jekyll to disable. It requires the one-time repo
-setting **Settings → Pages → Source: GitHub Actions**.
+no `gh-pages` branch, no Jekyll. The repo setting (Settings → Pages → Source: GitHub
+Actions) is already configured.
 
 **Base path.** A project Pages site is served from `https://<user>.github.io/<repo>/`, so CI
 builds with `BASE_PATH=/${{ github.event.repository.name }}/` — derived from the repo name
@@ -391,15 +401,12 @@ private and GitHub Pages was unavailable on the Free plan. Reverted once the rep
 public. The project itself was renamed twice in the same span — `timeslife` → `whenn` →
 `calscope` — this section, the package names, and the manifest all reflect the current one.)*
 
-An updated `ci.yml` may sit in `.github/workflows-pending/` when a session lacked GitHub's
-`workflow` scope and could not write it directly. Activate with:
-
-```sh
-mkdir -p .github/workflows
-git mv -f .github/workflows-pending/ci.yml .github/workflows/ci.yml
-rm -rf .github/workflows-pending
-git add -A && git commit -m 'Update CI workflow' && git push
-```
+**Agent-session caveat, kept for future sessions:** a token without GitHub's `workflow`
+OAuth scope cannot push any change under `.github/workflows/` (creating or modifying;
+deleting is exempt). Nothing is pending right now — but if a future agent session needs to
+change `ci.yml` and hits that rejection, the working convention is: write the new file to
+`.github/workflows-pending/ci.yml` with a README beside it, and let the user move it into
+place with `git mv` and push with their own credentials.
 
 ---
 

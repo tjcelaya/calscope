@@ -18,13 +18,17 @@ but is no more canonical than it is.
 
 ## Status
 
-Early. The headless engine is complete and tested; the only UI is a radial-view spike running
-on fake data.
+Early. The headless engine is complete and tested; the only UI is a radial-view spike on
+fake data, which doubles as the proving ground for the mark encoding (instant ticks,
+ongoing-to-now arcs, containment nesting, daylight ring backgrounds).
+
+Live at **https://tjcelaya.github.io/calscope/** — every push to `main` with green tests
+deploys.
 
 ```sh
 pnpm install
 pnpm dev         # Vite dev server (currently the radial spike)
-pnpm test        # 103 tests across all packages
+pnpm test        # 106 tests across all packages
 pnpm typecheck
 pnpm lint
 pnpm eval packages/core/fixture.example.json --from 2026-01-05 --to 2026-01-12
