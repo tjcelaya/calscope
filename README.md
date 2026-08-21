@@ -18,9 +18,10 @@ but is no more canonical than it is.
 
 ## Status
 
-Early. The headless engine is complete and tested; the only UI is a radial-view spike on
-fake data, which doubles as the proving ground for the mark encoding (instant ticks,
-ongoing-to-now arcs, containment nesting, daylight ring backgrounds).
+Early. The headless engine is complete and tested; the only UI is a set of view spikes on
+fake data — all three views side by side from one shared day-model — doubling as the
+proving ground for the mark encoding (instant ticks, ongoing-to-now arcs, containment
+nesting, daylight ring backgrounds, ring-order toggle).
 
 Live at **https://tjcelaya.github.io/calscope/** — every push to `main` with green tests
 deploys.

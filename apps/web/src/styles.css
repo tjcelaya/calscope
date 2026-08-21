@@ -66,16 +66,50 @@ select, input[type='range'] {
 
 input[type='range'] { padding: 0; accent-color: #6c7bff; }
 
-.stage {
+.views { display: flex; flex-direction: column; gap: 18px; }
+
+.panel {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 12px;
-  touch-action: none;
-  overscroll-behavior: contain;
+  padding: 12px 14px 14px;
 }
 
-.stage svg { display: block; width: 100%; height: auto; max-height: 74vh; }
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.panel svg { display: block; width: 100%; height: auto; }
+.panel-radial svg { max-height: 78vh; }
+
+.stage { touch-action: none; overscroll-behavior: contain; }
+
+/* "N columns at a time based on layout limits": overflow scrolls sideways, never squishes. */
+.hscroll { overflow-x: auto; }
+.hscroll svg { width: auto; max-width: none; }
+
+.axis-label { fill: var(--muted); font-size: 8px; }
+.axis-label.mid { text-anchor: middle; }
+
+.cell { fill: none; stroke: var(--line); rx: 4; }
+.cell-today { stroke: #f2f4ff; stroke-dasharray: 3 2; }
+
+.note.small { font-size: 0.75rem; margin-top: 8px; }
+
+@media (min-width: 1100px) {
+  .views {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: start;
+  }
+  .panel-radial { grid-row: 1 / span 2; }
+}
 
 /* Ring backgrounds carry the day's actual light -- subtle luminance steps so marks
    still dominate. In 12h mode this doubles as the AM/PM affordance. */

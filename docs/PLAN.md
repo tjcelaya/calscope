@@ -281,7 +281,7 @@ which "obvious" implementations are known-wrong.
 |---|---|
 | `packages/core` | Complete for M1: enums, valibot schemas, interval algebra, calendar windows, schedule evaluator, selector resolver, unit conversion, goal + routine evaluation, HLC, op log, `pnpm eval` CLI |
 | `packages/views` | `virtualDay()` + radial geometry, hardened by two field-review rounds: anomaly at the correct wall-clock hour on both shapes, `AtDayEnd` abutting midnight on the ring, sub-band selection by within-day time. No `TimeScale` interface yet — that lands in M2 |
-| `apps/web` | Radial **spike** — fake data, no engine, no persistence — but it now *prototypes the M2 mark encoding*: instant ticks, ongoing-to-`now` arcs, containment inset, daylight ring backgrounds (suncalc + `daylight.ts`), facet-emphasis control, hatched void. The winners here get hardened into `packages/views` in M2 |
+| `apps/web` | **View spikes** — fake data, no engine, no persistence — all three views side by side from one shared day-model (`spike-model.ts` → `RadialView` / `ColumnsView` / `GridView`), prototyping the M2 mark encoding: instant ticks, ongoing-to-`now`, containment inset, daylight backgrounds, facet emphasis, ring-order toggle, zoom-scaled band thickness. The winners get hardened into `packages/views` in M2 |
 | `packages/gcal`, `packages/ui` | Not created yet |
 
 ### Spike findings (M0.5)
@@ -343,6 +343,31 @@ Second round, after the encoding prototype shipped:
   which also turns out to be the best AM/PM affordance found so far: in 12h mode the two
   sub-bands show different light at the same angle, so 9am and 9pm content stop looking
   like neighbours.
+
+Third round, cross-device (Framework 13 / Moto Razr / iPad Pro, all Brave):
+
+- **Relative inset fails at phone scale.** Nesting was legible on desktop and invisible on
+  the Razr: 18% of a constant band thickness is a couple of physical pixels on a phone.
+  Fix within the locked-zoom rules: **ring thickness is now a function of zoom** (ring
+  count fills a fixed target radius, thickness clamped 14–44), which is exactly the
+  `slotSize(zoom)` shape invariant 1 permits — geometry depends on zoom, never on any
+  day's length. Insets also gained an absolute floor, `spurHeight` scales with thickness,
+  and mark outlines use `vector-effect="non-scaling-stroke"` so boundaries stay ~1px crisp
+  at any viewport size.
+- **iPad Brave re-tinted the whole palette** (cream backgrounds, navy sleep) — almost
+  certainly a browser night-mode/auto-dark filter, not our CSS. Defense shipped:
+  `<meta name="color-scheme" content="dark">` alongside the existing CSS `color-scheme`,
+  which well-behaved auto-dark heuristics respect. If it persists, check Brave iOS
+  Appearance → Night Mode. **Unconfirmed on-device.**
+- **Ring order is now a control**: newest day at the outer edge (default) or at the
+  center. Implemented as a pure permutation of the day→ring assignment; nothing else in
+  the pipeline changes. Promote to a persisted user setting in M2.
+- **All three views now render side by side in the spike** from one shared day-model
+  (`apps/web/src/spike-model.ts` → `RadialView` / `ColumnsView` / `GridView`), so
+  cross-view consistency is checkable by eye: the same instant ticks, nested meetings,
+  ongoing-to-`now`, DST anomaly and daylight appear in each projection. This de-risks
+  M3/M4 and is the working prototype of the shared ViewModel contract. The grid's
+  per-cell micro-timelines are a spike aid; real M3 cells collapse to goal-status marks.
 
 ### Mark encoding and facet emphasis (all views)
 
@@ -510,6 +535,14 @@ already proven and carries over.
       strictly-longer containers; deterministic and order-independent), so nesting is
       unambiguous. *Partial* overlap gets an explicit rule — inset does not cover it and
       overpainting is not acceptable as the final answer.
+- [ ] **Legibility is scale-tested, not assumed**: band thickness derives from zoom
+      (target-radius fill, clamped), insets have an absolute floor, outlines are
+      non-scaling — verified at a ~400px viewport, since that is where relative sizing
+      quietly failed in the spike.
+- [ ] **Ring order is a persisted user setting** (newest at edge vs center), implemented
+      as a pure permutation of day→ring assignment. Property test: flipping the order
+      permutes ring radii only — the set of mark angles, sweeps and sub-bands is
+      unchanged.
 - [ ] Sub-band placement uses **within-day** time on every day (regression: raw grid slots
       collapsed all days but the first into PM).
 - [ ] **Daylight ring backgrounds**: night/twilight/day segments per day from a local solar
@@ -552,7 +585,9 @@ already proven and carries over.
 `LinearVerticalScale` + tick-to-complete, wired to the op log. The radial view is the
 *interesting* one; this is the **useful** one — it is the Giertz grid and what makes daily
 logging a habit. **Do not let it slip far behind M2.** DST is invisible at day granularity,
-so this is mostly reuse of the M2 contract.
+so this is mostly reuse of the M2 contract. A working spike prototype exists at
+`apps/web/src/GridView.tsx` (cells with micro-timelines; real cells collapse to
+goal-status marks once the engine is wired).
 
 **On virtualization:** build this *without* `@tanstack/solid-virtual` first. A year as a
 single SVG of cheap `<rect>`s may well be fast enough — the cost is DOM node count, which one
@@ -569,7 +604,10 @@ have not measured.
 
 ### M4 — Horizontal day columns
 
-Third implementation of the same `TimeScale` interface, plus the shared zoom control.
+Third implementation of the same `TimeScale` interface, plus the shared zoom control. A
+working spike prototype exists at `apps/web/src/ColumnsView.tsx` — including the linear
+analogs of the spur (stepped-out block) and void (in-column hatch), nested-interval
+insets, and horizontal overflow scrolling.
 
 **Acceptance criteria**
 - [ ] Should be the **cheapest** of the three. If it is not, the abstraction is wrong — say so
