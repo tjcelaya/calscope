@@ -66,10 +66,19 @@ export function virtualDay(
   // renderer must still get a drawable slot rather than a silently missing mark.
   const at = transition !== null && Temporal.ZonedDateTime.compare(transition, next) < 0 ? transition : start
 
+  // `at` reads the transition instant in the POST-transition offset. For a Long day that
+  // is the start of the repeated wall-clock hour (NY: 1:00, the hour that happens twice).
+  // For a Short day it is one shift-width LATE: NY's transition instant reads 3:00 EDT,
+  // but the hour that never happened is 2:00-3:00 EST wall time. deltaHours is negative
+  // on Short days, so adding it walks the slot back by exactly the shift width
+  // (Lord Howe: 2.5 - 0.5 = 2.0). Caught in the field: the void rendered an hour late.
+  const postSlot = at.hour + at.minute / 60
   const slotIndex =
     policy === DstPolicy.AtDayEnd
       ? HOURS_PER_DAY
-      : at.hour + at.minute / 60
+      : shape === DayShape.Short
+        ? postSlot + deltaHours
+        : postSlot
 
   return {
     date,

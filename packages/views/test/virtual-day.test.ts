@@ -29,6 +29,15 @@ describe('virtualDay', () => {
     expect(vd.anomaly?.delta.total({ unit: 'hour' })).toBe(-1)
   })
 
+  it('places the anomaly at the correct WALL-CLOCK hour on both shapes', () => {
+    // Regression: reading the transition instant in the post-transition offset put the
+    // spring-forward void one shift-width late (3am instead of the skipped 2-3am hour).
+    expect(virtualDay(d('2026-11-01'), NY).anomaly!.slotIndex).toBe(1) // repeated [1,2)
+    expect(virtualDay(d('2026-03-08'), NY).anomaly!.slotIndex).toBe(2) // skipped  [2,3)
+    expect(virtualDay(d('2026-04-05'), LORD_HOWE).anomaly!.slotIndex).toBe(1.5) // repeated [1:30,2)
+    expect(virtualDay(d('2026-10-04'), LORD_HOWE).anomaly!.slotIndex).toBe(2) // skipped [2,2:30)
+  })
+
   it('handles Lord Howe half-hour shifts -- delta is a Duration, not an hour count', () => {
     // Lord Howe shifts by 30 minutes, which an integer hour count would silently mangle.
     const shifts = [d('2026-04-05'), d('2026-10-04')]

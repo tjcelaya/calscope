@@ -86,12 +86,39 @@ input[type='range'] { padding: 0; accent-color: #6c7bff; }
 .hub { fill: var(--muted); }
 
 .anomaly.spur { fill: var(--spur); stroke: #11131a; stroke-width: 0.5; }
+
+/* The void must carry visual WEIGHT: as a dashed outline it vanished on phones and made
+   a spring-forward week indistinguishable from an ordinary one. Hatched fill, per spec. */
 .anomaly.void {
-  fill: none;
+  fill: url(#voidHatch);
   stroke: var(--void);
-  stroke-width: 1;
-  stroke-dasharray: 2 2;
+  stroke-width: 0.8;
 }
+.void-hatch-line { stroke: var(--void); stroke-width: 1.4; }
+
+/* Kind is a SHAPE channel: instants are radial ticks that survive any containing arc. */
+.instant-tick {
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  paint-order: stroke;
+}
+
+/* State is a STROKE channel: ongoing = translucent fill + dashed edge, closed by the
+   now-line at its leading end. */
+.mark.ongoing {
+  fill-opacity: 0.45;
+  stroke-width: 1.4;
+  stroke-dasharray: 4 3;
+}
+
+.now-line { stroke: #f2f4ff; stroke-width: 1.6; stroke-linecap: round; }
+
+/* Facet emphasis dims, never removes. */
+.dim { opacity: 0.12; }
+.mark, .instant-tick, .now-line { transition: opacity 0.15s ease; }
+
+.swatch-instant { background: transparent; border-left: 3px solid var(--muted); border-radius: 0; width: 3px; }
+.swatch-ongoing { background: rgba(63, 167, 160, 0.45); border: 1px dashed #3fa7a0; }
 
 footer { display: flex; flex-direction: column; gap: 10px; }
 

@@ -286,8 +286,65 @@ These are load-bearing. Each was arrived at by getting it wrong first.
 - **12h mode needs more than a radial split.** A gap between AM/PM sub-bands helps and is
   implemented, but the mode still needs an explicit affordance — labels, differing opacity,
   or a day-separator spoke. **Open.**
-- **Overlapping marks need z-order rules.** A long event painted after a short one hides it
-  entirely. Needs explicit ordering or lane insetting. **Open.**
+- **Overlapping marks need more than z-order.** A long event painted after a short one hides
+  it entirely. Superseded by the mark-encoding spec below: kind is a *shape* channel, so an
+  instant can never be occluded by an interval in the first place. Lane rules remain for
+  interval-vs-interval overlap. **Partially open — see M2.**
+
+### Field findings (deployed spike, viewed on a phone)
+
+Looking at the deployed spike on real hardware caught what the unit tests could not —
+path-string assertions all passed while the pixels were wrong or invisible:
+
+- **The spring-forward void was in the wrong hour.** The transition instant was read in the
+  *post*-transition offset, landing the void one shift-width late (3am instead of the skipped
+  2–3am; Lord Howe 2:30 instead of 2:00). Fixed in `virtualDay`, regression-tested against
+  both NY and Lord Howe in both directions.
+- **The void was invisible anyway.** Rendered as a dashed stroke outline on a dark band, it
+  vanished on a phone — making a spring-forward week indistinguishable from an ordinary one,
+  which defeated the scenario comparison entirely. Now a hatched fill, per the original spec.
+- **`AtDayEnd` is ill-defined on a ring.** "Append after 24:00" lands at 0° — the same angle
+  as day *start* — because the circle closes; it rendered adjacent to (and indistinguishable
+  from) the at-transition wedge. The radial renderer now abuts midnight from the
+  counter-clockwise side (the segment *ends* at the top). This falsifies the earlier claim
+  that policy "changes only `slotIndex`": placement is necessarily interpreted per renderer.
+- **The fixture barely exercised concurrency, and hid the evidence.** It held exactly one
+  overlap (an instant inside a long interval) and the interval fully occluded it; there was
+  no ongoing entry at all. The fixture now carries a concurrency ladder — instant inside a
+  meeting inside an ongoing workday, plus a partial overlap across a boundary — and a
+  simulated `now`.
+- **Scenario discriminability rests entirely on the anomaly encoding.** The fixture is
+  deliberately seeded by day *index*, not date, so scenarios differ only in their DST marks —
+  a controlled comparison, but it means those marks must carry real visual weight.
+
+### Mark encoding and facet emphasis (all views)
+
+Concurrent truths need separate visual channels, or they occlude each other. A day can
+simultaneously contain a completed interval, a shorter interval inside it, an instant inside
+that, an *ongoing* interval still running, and a goal window that is pending until its
+deadline passes. One channel (fill color, painter's order) cannot carry all of it.
+
+| Channel | Encodes | Concretely |
+|---|---|---|
+| **Fill** (hue) | Track identity | The track's color, same in every view |
+| **Shape** | Kind | Instant → radial tick crossing the band; interval → arc; ongoing → arc extended to `now` with a dashed leading edge; goal window → stroke-only outline band, never filled |
+| **Stroke / pattern** | State | Ongoing → dashed edge; skipped time → hatch; pending window → dashed outline; missed → to be designed in M2 |
+| **Opacity** | Emphasis | The facet selector dims non-focused marks (≈0.12), never removes them |
+
+Two rules that fall out:
+
+- **`now` is an input, never a clock read.** Geometry and evaluation both take `now` as a
+  parameter (`evaluateGoal` already does); views reading the real clock would make geometry
+  impure and tests nondeterministic. The facet selector and `now` join the small set of raw
+  UI signals.
+- **Facet emphasis is a first-class control**: *everything / happening now / instants /
+  finished durations / pending windows*. It answers "what is happening, what happened, and
+  what still has a window open before it fails" without a mode switch — dimming, never
+  filtering, so context stays visible.
+
+The spike prototypes the first three rows (ticks, ongoing-to-now, hatched void, emphasis
+select); M2 hardens them into `packages/views` and adds the goal-window row, which needs the
+engine.
 
 ### CI and hosting
 
@@ -402,28 +459,58 @@ Promote the spike into `packages/views` behind a shared contract.
 - `snapViewport(range, days)`: snaps to day boundaries when a non-`Normal` day is in range so
   a spur is never half-clipped. Zoom *control* stays live throughout — "locked" describes the
   layout mode, never a disabled input.
-- `DstPolicy` is a user setting: `AtTransition` (default) or `AtDayEnd`. It changes only
-  `anomaly.slotIndex`, so it costs one branch per renderer.
+- `DstPolicy` is a user setting: `AtTransition` (default) or `AtDayEnd`. The *model* carries
+  it as `anomaly.slotIndex`, but **placement is interpreted per renderer** — on a ring,
+  "after 24:00" is the same angle as 00:00, so the radial view abuts midnight from the
+  counter-clockwise side. (An earlier claim that policy costs "one branch via slotIndex
+  alone" was falsified by the deployed spike.)
 
-**Acceptance criteria**
-- [ ] Dev fixture permanently contains a spring-forward and a fall-back week.
+**Acceptance criteria — concurrency and mark encoding first.** The field test showed this is
+where the view actually fails; DST polish is second; the locked-zoom infrastructure is
+already proven and carries over.
+
+*Concurrency & encoding*
+- [ ] The encoding table above is implemented in `packages/views`: kind is a shape channel
+      (tick / arc / ongoing-to-now / outline window), state a stroke/pattern channel,
+      identity fill, emphasis opacity.
+- [ ] **The concurrency ladder renders with every entry visible**: an instant inside an
+      interval inside an ongoing interval yields three distinct marks, none fully covered.
+      Also: partial overlap across a boundary, identical starts, three-plus deep, and an
+      interval spanning midnight while another runs.
+- [ ] **Ongoing property**: an ongoing entry's mark ends at `angle(now)`; advancing `now`
+      moves only ongoing marks and the now-line, nothing else. `now` is a parameter, never
+      a clock read inside views.
+- [ ] Interval-vs-interval overlap has a deterministic lane rule (the `lane` parameter on
+      `markFor`), stable across re-renders so the layout does not shuffle as data arrives.
+- [ ] Facet emphasis dims (≈0.12 opacity) and never removes: mark count is identical under
+      every emphasis value.
+- [ ] Goal-window marks (stroke-only outline; `Pending` dashed) render from `GoalResult`,
+      visually distinct from any entry mark.
+
+*DST anomalies*
+- [ ] Anomaly sits at the correct wall-clock hour on both shapes: NY spring void at [2,3),
+      fall spur at [1,2); Lord Howe at [2,2.5) and [1.5,2). (Regression — the spike shipped
+      the void an hour late.)
+- [ ] The void is a filled/hatched mark with nonzero area, never stroke-only.
+- [ ] `AtDayEnd` on the radial abuts midnight from the counter-clockwise side — its geometry
+      is never congruent with a day-start placement. (Regression-tested.)
+- [ ] Both `DstPolicy` values produce the **same set** of marks — only positions differ.
+      Placement never drops or duplicates an entry.
+- [ ] Spike findings addressed: `innerRadius` ratio, `spurHeight` scaling with ring pitch.
+- [ ] **12h mode has an explicit AM/PM affordance** beyond the sub-band gap — labels,
+      differing opacity, or a day-separator spoke. Record the choice in section 5 and strike
+      the open question.
+
+*Locked zoom & infrastructure*
+- [ ] Dev fixture permanently contains a spring-forward and a fall-back week, the concurrency
+      ladder, and an ongoing entry with a simulated `now`.
 - [ ] Property test: `slotSize` byte-identical for any two dates in any zone at the same zoom.
       Generate across awkward zones — Lord Howe (30-min shift), Tehran, Chatham, Santiago.
 - [ ] A ring's arcs sum to exactly 360° on `Long`, `Short` and `Normal` days alike.
 - [ ] Every entry lands in exactly one slot-or-spur; both 1:30ams of a fall-back night
       resolve to *different* marks.
 - [ ] `snapViewport` is idempotent, widens by at most one day, no-ops when all days are `Normal`.
-- [ ] Both `DstPolicy` values produce the **same set** of marks — only positions differ.
-      Placement never drops or duplicates an entry.
 - [ ] Geometry snapshot tests on SVG path strings at several zoom levels.
-- [ ] Spike findings addressed: `innerRadius` ratio, `spurHeight` scaling with ring pitch.
-- [ ] **Overlap rule implemented.** For N mutually overlapping entries on one day, every
-      entry yields a visible mark — N distinct non-empty paths, none fully covered by
-      another. Lane assignment (the `lane` parameter on `markFor`) is deterministic and
-      stable across re-renders, so the layout does not shuffle as data arrives.
-- [ ] **12h mode has an explicit AM/PM affordance** beyond the sub-band gap — labels,
-      differing opacity, or a day-separator spoke. Record the choice in section 5 and strike
-      the open question.
 
 ### M3 — Vertical year/month scroll
 
@@ -574,5 +661,9 @@ written. Fixture shape: `{ tz?, tags[], tracks[], entries[], goals[], routines[]
 - `Goal.grace`, `Goal.rollup`, `Routine.ordered` are declared but inert (see section 3).
   M5 must implement or remove them.
 - Schedule/selector editor UX (M5) is the biggest unknown in the project.
+- Missed-state encoding (stroke channel) is undesigned; goal-window outline marks need the
+  engine and land in M2.
+- Deep interval overlap (4+): lane insetting vs opacity stacking is unresolved; the spike
+  only proves 3-deep with an instant as the innermost layer.
 - Browser-only OAuth gets **no refresh token**, so sync only happens while the app is open.
   If that becomes annoying the fix is a ~150-line token broker, not a redesign.

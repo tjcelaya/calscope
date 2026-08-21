@@ -2,6 +2,7 @@ import { For, Show, createMemo, createSignal, onCleanup, onMount } from 'solid-j
 import { Temporal } from 'temporal-polyfill'
 import {
   DstPolicy,
+  angleForSlot,
   anomalyGeometry,
   defaultRadialConfig,
   hourTicks,
@@ -12,11 +13,36 @@ import {
   virtualDay,
 } from '@calscope/views'
 import { Gesture } from '@use-gesture/vanilla'
-import { SCENARIOS, TIME_ZONE, generate, tracks, type ScenarioKey } from './fake-data'
+import {
+  SCENARIOS,
+  TIME_ZONE,
+  generate,
+  simulatedNow,
+  tracks,
+  type ScenarioKey,
+} from './fake-data'
 
 const MIN_RINGS = 2
 const MAX_RINGS = 14
 const trackColor = new Map(tracks.map((t) => [t.id, t.color]))
+
+/** Which facet the view emphasizes; everything else dims but never disappears. */
+const Emphasis = {
+  All: 'all',
+  Now: 'now',
+  Instants: 'instants',
+  Durations: 'durations',
+} as const
+type Emphasis = (typeof Emphasis)[keyof typeof Emphasis]
+
+/**
+ * The spike's mark encoding, prototyping the channel split the real views must commit to:
+ * fill = track identity; SHAPE = kind (instant -> radial tick, interval -> arc, ongoing ->
+ * arc to `now` with a dashed leading edge); stroke/pattern = state (hatched void).
+ */
+type RenderMark =
+  | { kind: 'arc'; path: string; color: string; ongoing: boolean }
+  | { kind: 'tick'; angleDeg: number; r0: number; r1: number; color: string }
 
 export function RadialSpike() {
   // Raw UI state only -- everything derived below is a pure function of these.
@@ -24,6 +50,7 @@ export function RadialSpike() {
   const [hoursPerRevolution, setHours] = createSignal<24 | 12>(24)
   const [policy, setPolicy] = createSignal<DstPolicy>(DstPolicy.AtTransition)
   const [scenario, setScenario] = createSignal<ScenarioKey>('fallback')
+  const [emphasis, setEmphasis] = createSignal<Emphasis>(Emphasis.All)
 
   let host!: HTMLDivElement
 
@@ -53,25 +80,60 @@ export function RadialSpike() {
 
   const entries = createMemo(() => generate(start(), rings()))
 
+  // The clock is an input, never a read -- same rule as evaluateGoal's injectable `now`.
+  const now = createMemo(() => simulatedNow(start(), rings()))
+  const nowSlot = createMemo(() => slotPosition(now()))
+
   const bands = createMemo(() => {
     const cfg = config()
+    const per = cfg.hoursPerRevolution
     const dayList = days()
     const ringAt = (i: number) => (i >= 0 && i < dayList.length ? ringRadii(cfg, i) : null)
 
     // Marks are collected per ring rather than per entry, because an event that crosses
     // midnight contributes geometry to two different rings.
-    const marksByDay = new Map<number, Array<{ path: string; color: string }>>()
+    const marksByDay = new Map<number, RenderMark[]>()
+    const push = (dayIndex: number, mark: RenderMark) => {
+      const bucket = marksByDay.get(dayIndex) ?? []
+      bucket.push(mark)
+      marksByDay.set(dayIndex, bucket)
+    }
+
     for (const entry of entries()) {
       const dayIndex = dayList.findIndex((d) => d.date.equals(entry.start.toPlainDate()))
       if (dayIndex < 0) continue
 
-      const startSlot = dayIndex * 24 + slotPosition(entry.start)
       const color = trackColor.get(entry.trackId) ?? '#888'
+      const startSlot = dayIndex * 24 + slotPosition(entry.start)
 
-      for (const mark of markFor(cfg, ringAt, startSlot, startSlot + entry.endHours)) {
-        const bucket = marksByDay.get(mark.dayOffset) ?? []
-        bucket.push({ path: mark.path, color })
-        marksByDay.set(mark.dayOffset, bucket)
+      // Instants are radial TICKS, not micro-arcs: a shape channel, so a point-in-time
+      // stays visible inside any interval that contains it. (Spans the full ring band;
+      // the 12h sub-band nuance is deliberately ignored at spike fidelity.)
+      if (!entry.ongoing && entry.endHours === 0) {
+        const ring = ringAt(dayIndex)!
+        push(dayIndex, {
+          kind: 'tick',
+          angleDeg: (angleForSlot(slotPosition(entry.start), per) * 180) / Math.PI,
+          r0: ring.r0,
+          r1: ring.r1,
+          color,
+        })
+        continue
+      }
+
+      const endSlot = entry.ongoing
+        ? dayIndex * 24 + nowSlot()
+        : startSlot + entry.endHours
+
+      // Slots are measured from the grid origin (day 0 midnight), so markFor's
+      // dayOffset already IS the absolute ring index -- do not add dayIndex again.
+      for (const mark of markFor(cfg, ringAt, startSlot, endSlot)) {
+        push(mark.dayOffset, {
+          kind: 'arc',
+          path: mark.path,
+          color,
+          ongoing: entry.ongoing === true,
+        })
       }
     }
 
@@ -92,15 +154,29 @@ export function RadialSpike() {
     return `${-e} ${-e} ${e * 2} ${e * 2}`
   })
 
+  const nowAngleDeg = createMemo(
+    () => (angleForSlot(nowSlot(), config().hoursPerRevolution) * 180) / Math.PI,
+  )
+  const lastRing = createMemo(() => ringRadii(config(), rings() - 1))
+
   const anomalousDays = createMemo(() => days().filter((d) => d.shape !== 'normal'))
+
+  const dimArc = (ongoing: boolean) => {
+    const e = emphasis()
+    if (e === Emphasis.All) return false
+    if (e === Emphasis.Now) return !ongoing
+    return e !== Emphasis.Durations || ongoing
+  }
+  const dimTick = () => emphasis() !== Emphasis.All && emphasis() !== Emphasis.Instants
 
   return (
     <div class="spike">
       <header>
         <h1>calscope — radial spike</h1>
         <p class="sub">
-          M0.5. Fake data, no engine, no persistence. Exists to answer two questions: does a ring
-          stay legible past ~7 days, and does the spur read as information or as a rendering bug?
+          M0.5. Fake data, no engine, no persistence. Three questions: does a ring stay legible
+          past ~7 days, does the spur read as information or as a rendering bug, and does
+          concurrency survive — an instant inside a meeting inside an ongoing workday?
         </p>
       </header>
 
@@ -138,10 +214,32 @@ export function RadialSpike() {
             <option value={DstPolicy.AtDayEnd}>At day end</option>
           </select>
         </label>
+
+        <label>
+          Emphasize
+          <select value={emphasis()} onChange={(e) => setEmphasis(e.currentTarget.value as Emphasis)}>
+            <option value={Emphasis.All}>Everything</option>
+            <option value={Emphasis.Now}>Happening now</option>
+            <option value={Emphasis.Instants}>Instants</option>
+            <option value={Emphasis.Durations}>Finished durations</option>
+          </select>
+        </label>
       </div>
 
       <div class="stage" ref={host}>
         <svg viewBox={viewBox()} role="img" aria-label="Radial calendar spike">
+          <defs>
+            <pattern
+              id="voidHatch"
+              width="4"
+              height="4"
+              patternUnits="userSpaceOnUse"
+              patternTransform="rotate(45)"
+            >
+              <line x1="0" y1="0" x2="0" y2="4" class="void-hatch-line" />
+            </pattern>
+          </defs>
+
           <For each={hourTicks(hoursPerRevolution())}>
             {(angle, i) => (
               <g transform={`rotate(${(angle * 180) / Math.PI})`}>
@@ -166,7 +264,25 @@ export function RadialSpike() {
                   stroke-width={band.ring.r1 - band.ring.r0}
                 />
                 <For each={band.marks}>
-                  {(mark) => <path d={mark.path} fill={mark.color} class="mark" />}
+                  {(mark) =>
+                    mark.kind === 'arc' ? (
+                      <path
+                        d={mark.path}
+                        fill={mark.color}
+                        stroke={mark.ongoing ? mark.color : undefined}
+                        classList={{ mark: true, ongoing: mark.ongoing, dim: dimArc(mark.ongoing) }}
+                      />
+                    ) : (
+                      <g transform={`rotate(${mark.angleDeg})`}>
+                        <line
+                          y1={-(mark.r0 - 2.5)}
+                          y2={-(mark.r1 + 2.5)}
+                          stroke={mark.color}
+                          classList={{ 'instant-tick': true, dim: dimTick() }}
+                        />
+                      </g>
+                    )
+                  }
                 </For>
                 <Show when={band.anomaly}>
                   {(anomaly) => (
@@ -179,6 +295,15 @@ export function RadialSpike() {
               </g>
             )}
           </For>
+
+          {/* "Now" on the most recent ring -- doubles as the ongoing arc's leading edge. */}
+          <g transform={`rotate(${nowAngleDeg()})`}>
+            <line
+              y1={-(lastRing().r0 - 4)}
+              y2={-(lastRing().r1 + 4)}
+              classList={{ 'now-line': true, dim: emphasis() === Emphasis.Instants || emphasis() === Emphasis.Durations }}
+            />
+          </g>
 
           <circle r={2.5} class="hub" />
         </svg>
@@ -194,6 +319,8 @@ export function RadialSpike() {
               </span>
             )}
           </For>
+          <span class="chip"><i class="swatch-instant" />instant (tick)</span>
+          <span class="chip"><i class="swatch-ongoing" />ongoing → now</span>
           <span class="chip"><i class="swatch-spur" />repeated hour (spur)</span>
           <span class="chip"><i class="swatch-void" />skipped hour (void)</span>
         </div>

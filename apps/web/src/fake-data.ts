@@ -2,10 +2,19 @@ import { Temporal } from 'temporal-polyfill'
 
 /**
  * Throwaway fixture for the M0.5 spike. Deliberately includes DST days so the spur and
- * void geometry are confronted now rather than rediscovered twice a year.
+ * void geometry are confronted now rather than rediscovered twice a year, and a
+ * concurrency ladder -- instant inside interval inside interval, partial overlap,
+ * an event spanning midnight, and an ONGOING event on the most recent day -- so the
+ * mark-encoding ideas are tested against the cases that actually collide.
  */
 export type FakeTrack = { id: string; name: string; color: string }
-export type FakeEntry = { trackId: string; start: Temporal.ZonedDateTime; endHours: number }
+export type FakeEntry = {
+  trackId: string
+  start: Temporal.ZonedDateTime
+  endHours: number
+  /** Still running: no end. Rendered to the simulated `now`, styled distinctly. */
+  ongoing?: boolean
+}
 
 export const TIME_ZONE = 'America/New_York'
 
@@ -13,6 +22,7 @@ export const tracks: FakeTrack[] = [
   { id: 'sleep', name: 'Sleep', color: '#6c7bff' },
   { id: 'coffee', name: 'Coffee', color: '#d98b45' },
   { id: 'work', name: 'Work', color: '#3fa7a0' },
+  { id: 'meeting', name: 'Meeting', color: '#8faa4b' },
   { id: 'run', name: 'Run', color: '#c2557a' },
   { id: 'read', name: 'Read', color: '#8f6cc4' },
 ]
@@ -23,17 +33,27 @@ function rand(seed: number): number {
   return x - Math.floor(x)
 }
 
+/**
+ * Seeded by DAY INDEX, not date, so every scenario shows identical marks and the only
+ * visible difference between scenarios is the DST anomaly itself. Controlled comparison
+ * -- but it means scenario discriminability rests entirely on the anomaly encoding.
+ */
 const SHAPES: Array<{ trackId: string; hour: number; duration: number; jitter: number }> = [
   { trackId: 'sleep', hour: 23.5, duration: 7, jitter: 1.2 },
   { trackId: 'coffee', hour: 7.5, duration: 0, jitter: 1 },
-  { trackId: 'coffee', hour: 13.5, duration: 0, jitter: 1.5 },
+  // The concurrency ladder: coffee at 10:45 sits inside the 10:00 meeting, which sits
+  // inside the 9-17 work block -- three deep. The 16:30 meeting straddles work's end.
+  { trackId: 'coffee', hour: 10.75, duration: 0, jitter: 0.2 },
   { trackId: 'work', hour: 9, duration: 8, jitter: 0.8 },
-  { trackId: 'run', hour: 17.5, duration: 0.75, jitter: 1.5 },
+  { trackId: 'meeting', hour: 10, duration: 1.5, jitter: 0.3 },
+  { trackId: 'meeting', hour: 16.5, duration: 1, jitter: 0.3 },
+  { trackId: 'run', hour: 17.5, duration: 0, jitter: 1.5 },
   { trackId: 'read', hour: 21, duration: 1.25, jitter: 1 },
 ]
 
 export function generate(startDate: Temporal.PlainDate, days: number): FakeEntry[] {
   const entries: FakeEntry[] = []
+  const lastDay = days - 1
 
   for (let i = 0; i < days; i++) {
     const date = startDate.add({ days: i })
@@ -41,6 +61,8 @@ export function generate(startDate: Temporal.PlainDate, days: number): FakeEntry
       const seed = i * 17 + s * 3 + 1
       // Skip a few so the rings do not look mechanically identical.
       if (rand(seed * 5) < 0.12) continue
+      // The most recent day's work block becomes the ongoing entry instead.
+      if (i === lastDay && shape.trackId === 'work') continue
 
       const offset = (rand(seed) - 0.5) * shape.jitter
       const raw = shape.hour + offset
@@ -59,7 +81,26 @@ export function generate(startDate: Temporal.PlainDate, days: number): FakeEntry
       })
     }
   }
+
+  // Ongoing: work started this morning and has not been stopped. Its arc must extend to
+  // the simulated `now` -- concurrent with the 10:00 meeting and the 10:45 instant.
+  entries.push({
+    trackId: 'work',
+    start: startDate.add({ days: lastDay }).toZonedDateTime({ timeZone: TIME_ZONE, plainTime: '09:00' }),
+    endHours: 0,
+    ongoing: true,
+  })
   return entries
+}
+
+/**
+ * The clock is an INPUT here, same rule as evaluateGoal's injectable `now` -- views never
+ * read the real clock, or geometry stops being pure and tests stop being deterministic.
+ */
+export function simulatedNow(startDate: Temporal.PlainDate, days: number): Temporal.ZonedDateTime {
+  return startDate
+    .add({ days: days - 1 })
+    .toZonedDateTime({ timeZone: TIME_ZONE, plainTime: '14:30' })
 }
 
 /** The three scenarios the spike exists to answer questions about. */

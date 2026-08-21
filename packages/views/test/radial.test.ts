@@ -3,6 +3,7 @@ import { Temporal } from 'temporal-polyfill'
 import {
   TAU,
   anomalyGeometry,
+  arcPath,
   angleForSlot,
   defaultRadialConfig,
   hourTicks,
@@ -94,6 +95,18 @@ describe('anomaly geometry', () => {
     const geo = anomalyGeometry(cfg, ringRadii(cfg, 0), day)
     expect(geo?.isSpur).toBeUndefined()
     expect(geo?.path).toMatch(/^M/)
+  })
+
+  it('AtDayEnd abuts midnight from the counter-clockwise side, never colliding with day start', () => {
+    // On a ring, "after 24:00" is the same angle as 00:00 -- drawing there would be
+    // indistinguishable from a day-start placement. The segment must END at the top.
+    const ring = ringRadii(cfg, 0)
+    const spurBand = { r0: ring.r1, r1: ring.r1 + cfg.spurHeight }
+    const sweep = TAU / 24
+
+    const geo = anomalyGeometry(cfg, ring, virtualDay(d('2026-11-01'), NY, DstPolicy.AtDayEnd))!
+    expect(geo.path).toBe(arcPath(spurBand, TAU - sweep, TAU))
+    expect(geo.path).not.toBe(arcPath(spurBand, 0, sweep))
   })
 
   it('both DstPolicy values produce a mark -- only its position differs', () => {

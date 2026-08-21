@@ -174,9 +174,15 @@ export function anomalyGeometry(
   const start = day.anomaly.slotIndex
   const magnitudeHours = Math.abs(day.anomaly.delta.total({ unit: 'hour' }))
   const band = subBand(ring, subBandForSlot(start % per, per), per)
+  const sweep = (magnitudeHours / per) * TAU
 
-  const a0 = angleForSlot(start, per)
-  const a1 = a0 + (magnitudeHours / per) * TAU
+  // AtDayEnd cannot mean "after 24:00" on a ring -- the circle closes, so that angle IS
+  // 00:00, indistinguishable from a day-start placement (and from an early at-transition
+  // mark one wedge over). Abut midnight from the counter-clockwise side instead: the
+  // segment ENDS exactly at the top, which reads as "appended at the end of the day".
+  const atDayEnd = start >= HOURS_PER_DAY
+  const a0 = atDayEnd ? TAU - sweep : angleForSlot(start, per)
+  const a1 = a0 + sweep
 
   if (day.shape === 'long') {
     // Stepped outside the band: the repeated hour is additional to a closed ring.
