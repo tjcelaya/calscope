@@ -1,17 +1,17 @@
-# timeslife
+# whenn
 
 A local-first tool for **goals, events, and routines** on one composable model, rendered
 through three quite different calendar views.
 
 It is an installable PWA served as static files — self-hostable by anyone, no accounts, no
-database to run. Google Calendar is a **peer store**: timeslife reads and writes it, but is
+database to run. Google Calendar is a **peer store**: whenn reads and writes it, but is
 no more canonical than it is.
 
 ---
 
 ## 1. What it is for
 
-Most habit trackers can express "did I do this today" and nothing else. timeslife exists to
+Most habit trackers can express "did I do this today" and nothing else. whenn exists to
 express the things that actually describe a life:
 
 - **Did this occur — or deliberately *not* occur — inside a window?**
@@ -47,13 +47,13 @@ interpreted per view, so switching views preserves your sense of scale.
 
 [`tjcelaya/scribcal-android`](https://github.com/tjcelaya/scribcal-android) is an existing
 Kotlin app that captures events and writes them to Google Calendar, and holds real event
-history that timeslife must visualise. Its Room schema is timeslife's model in embryo
+history that whenn must visualise. Its Room schema is whenn's model in embryo
 (`EventType`→`Track`, `Cadence`→`ValueType`, and an `Event` with the identical
 instant/ongoing/completed states), so nothing needs redesigning to accept that history.
 
 **Division of labour:** scribcal stays a capture client for the one thing a PWA genuinely
 cannot do — hold a persistent silent notification you can stop a running timer from.
-timeslife owns the model, goals, and views. Google Calendar is the bus between them, and
+whenn owns the model, goals, and views. Google Calendar is the bus between them, and
 scribcal needs no new integration code.
 
 ---
@@ -291,27 +291,28 @@ These are load-bearing. Each was arrived at by getting it wrong first.
 
 ### CI and hosting
 
-`.github/workflows/ci.yml` runs lint → typecheck → test → build on every push and PR, then
-deploys to **Cloudflare Pages** from the default branch. Deploy is a step in the same job as
-the tests, so the bytes published are exactly the bytes just built and tested.
+`.github/workflows/ci.yml` runs lint → typecheck → test → build on every push and PR, and
+deploys the built PWA to GitHub Pages from the default branch. The repo is public, which is
+what GitHub Pages requires on the Free plan.
 
-**Not GitHub Pages:** it only publishes from public repositories on the Free plan. Cloudflare
-Pages is free with private repos, and it is where the project is heading anyway — the sync
-relay below is specced as a Cloudflare Worker + Durable Object, and the optional OAuth token
-broker is the same shape.
+Deployment uses the Actions-based Pages flow (`upload-pages-artifact` + `deploy-pages`) —
+no `gh-pages` branch to force-push and no Jekyll to disable. It requires the one-time repo
+setting **Settings → Pages → Source: GitHub Actions**.
 
-Requires two repo secrets, `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, and a Pages
-project named `timeslife` created as **Direct Upload** — CI pushes the build itself, so
-Cloudflare never needs repository access.
+**Base path.** A project Pages site is served from `https://<user>.github.io/<repo>/`, so CI
+builds with `BASE_PATH=/${{ github.event.repository.name }}/` — derived from the repo name
+at build time rather than hardcoded, so a future rename does not silently break the deploy.
+`apps/web/vite.config.ts` feeds it to Vite's `base` *and* to the PWA manifest's `start_url`
+and `scope` — a service worker cannot control pages outside its scope, so a `/` scope on a
+`/whenn/` deployment would silently disable offline support. Local dev and `vite preview`
+stay at `/`.
 
-**Base path.** Cloudflare Pages serves from the root of its own subdomain, so `BASE_PATH` is
-unset and the bundle is root-relative. The mechanism is kept for self-hosters: serving under
-a subpath needs the prefix in both Vite's `base` *and* the PWA manifest's `start_url` and
-`scope`, because a service worker cannot control pages outside its scope — a `/` scope on a
-`/timeslife/` deployment silently disables offline support with nothing failing loudly.
+**This origin matters for M1.5:** `https://<user>.github.io` must be an authorized JavaScript
+origin on the Google OAuth web client.
 
-**This origin matters for M1.5:** `https://timeslife.pages.dev` must be an authorized
-JavaScript origin on the Google OAuth web client.
+*(An earlier revision of this section targeted Cloudflare Pages, while the repo was still
+private and GitHub Pages was unavailable on the Free plan. Reverted along with the rest of
+the `timeslife` → `whenn` rename, once the repo went public.)*
 
 An updated `ci.yml` may sit in `.github/workflows-pending/` when a session lacked GitHub's
 `workflow` scope and could not write it directly. Activate with:
@@ -493,7 +494,7 @@ genuinely destructive thing this app does.
 - Per-track `calendarId` routing; managed-calendar creation.
 - **API constraint:** `Calendars`/`CalendarList` resources have **no `extendedProperties`** —
   only `Events` do. Identify managed calendars with a marker line in the `description`
-  (`x-timeslife:v1:<uuid>`), discovered via a `calendarList.list` scan. Do not use a naming
+  (`x-whenn:v1:<uuid>`), discovered via a `calendarList.list` scan. Do not use a naming
   convention on the display name.
 
 **Acceptance criteria**
