@@ -72,6 +72,7 @@ export const TrackSchema = v.object({
   archivedAt: v.optional(v.string()),
   calendarId: v.optional(v.string()),
   legacyTitles: v.optional(v.array(v.string())),
+  fillsGapBefore: v.optional(v.boolean()),
 })
 
 export const EntrySchema = v.object({

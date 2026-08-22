@@ -55,6 +55,32 @@ describe('buildModel over core entries', () => {
     expect(kinds.get('b')).toBe(MarkKind.Instant)
   })
 
+  it('a gap-fill track entry renders as an interval from the previous end to its moment', () => {
+    const sleep: Track = {
+      id: 'sleep',
+      name: 'Sleep',
+      valueType: ValueType.Binary,
+      tags: [],
+      color: '#6c7bff',
+      fillsGapBefore: true,
+    }
+    const entries: Entry[] = [
+      {
+        id: 'read',
+        trackId: 'work',
+        start: at('2026-06-09T22:00:00').toString(),
+        end: at('2026-06-09T23:00:00').toString(),
+      },
+      { id: 'wake', trackId: 'sleep', start: at('2026-06-10T07:00:00').toString() },
+    ]
+    const m = buildModel(entries, [...tracks, sleep], range('2026-06-08', 3), DstPolicy.AtTransition, now)
+    const wake = m.marks.find((mk) => mk.entryId === 'wake')!
+    expect(wake.kind).toBe(MarkKind.Interval)
+    // Day index 1 (June 9) 23:00 -> day index 2 (June 10) 07:00 in grid slots.
+    expect(wake.startSlot).toBe(24 + 23)
+    expect(wake.endSlot).toBe(48 + 7)
+  })
+
   it("an ongoing mark ends exactly at `now`'s grid slot; advancing now moves only it", () => {
     const entries: Entry[] = [
       { id: 'a', trackId: 'work', start: at('2026-06-10T09:00:00').toString() },

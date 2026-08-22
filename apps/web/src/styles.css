@@ -82,6 +82,16 @@ input[type='range'] { padding: 0; accent-color: #6c7bff; }
   border-bottom: 1px solid var(--line);
 }
 .capture-row:last-child { border-bottom: none; }
+.capture-row .chip { margin-right: auto; }
+.gapfill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
 
 .capture-new { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 

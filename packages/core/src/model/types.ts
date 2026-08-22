@@ -45,6 +45,12 @@ export type Track = {
   calendarId?: string
   /** Historic title forms ('[S] Coffee', '. Coffee') so re-import stays idempotent. */
   legacyTitles?: string[]
+  /**
+   * Entries on this track claim the span back to the previous event's end (any track):
+   * a sleep instant logged at wake-up becomes the whole night. Applied as a derivation
+   * (expandGapFill), never rewritten into the stored entry.
+   */
+  fillsGapBefore?: boolean
 }
 
 export type Entry = {

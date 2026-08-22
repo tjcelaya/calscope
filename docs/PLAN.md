@@ -116,6 +116,7 @@ type Track = {
   color: string
   calendarId?: string        // routes writes to a specific Google calendar
   legacyTitles?: string[]    // historic title forms, for idempotent re-import
+  fillsGapBefore?: boolean   // sleep pattern: entries claim back to the previous event's end
 }
 
 type Entry = {
@@ -132,6 +133,17 @@ type Entry = {
 
 A Giertz checkbox is an `Entry` on a `Binary` track. A calendar event is an `Entry` on an
 `Interval` track. No special cases.
+
+**Gap fill (`fillsGapBefore`)** exists for sleep-style capture: one instant logged at
+wake-up should read as the whole night. An entry on such a track claims the span from the
+previous event's end — the latest completed-interval end or instant moment across ALL
+tracks, ongoing entries excluded — up to its own moment. This is a **derivation**
+(`expandGapFill` in core, applied in the app's `buildModel`), never a rewrite of the
+stored entry: the captured instant stays canonical in the op log and in Google Calendar,
+and the expansion recomputes when neighbouring events are imported, edited, or deleted.
+Goal evaluation currently sees the RAW entries; feeding it expanded ones is a decision
+for M5's editor (a sleep-duration goal wants it, an "did I log sleep" Exists goal must
+not double-count).
 
 ### Two algebras, deliberately the same shape
 
@@ -271,7 +283,7 @@ These are load-bearing. Each was arrived at by getting it wrong first.
 **Done: M0, M0.5 (both field-review rounds), M1, and the offline half of M1.5** —
 `packages/gcal` complete against recorded fixtures, IndexedDB op-log persistence, and the
 app wired to the real engine with capture and a Google Calendar connect/dry-run/import UI.
-269 tests; lint, typecheck and build clean. Live at
+278 tests; lint, typecheck and build clean. Live at
 **https://tjcelaya.github.io/calscope/** — every push to `main` with green tests deploys.
 
 **Next: the user-side half of M1.5** — the Google Cloud OAuth client (documented in the CI

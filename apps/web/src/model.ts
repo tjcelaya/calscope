@@ -7,7 +7,7 @@ import {
   type VirtualDay,
 } from '@calscope/views'
 import { daylightSegments, type DaylightSeg } from './daylight'
-import { ValueType, type Entry, type Track } from './core'
+import { ValueType, expandGapFill, type Entry, type Track } from './core'
 
 /**
  * One day-model, three projections. Every view -- radial, day columns, year grid --
@@ -80,6 +80,11 @@ export function buildModel(
   const days = Array.from({ length: count }, (_, i) =>
     virtualDay(range.start.add({ days: i }), range.tz, policy),
   )
+
+  // Sleep-pattern tracks: an entry claims the span back to the previous event's end.
+  // Derived here, over ALL entries (not just in-range ones), so the predecessor search
+  // sees events outside the visible window too.
+  entries = expandGapFill(entries, tracks)
 
   const colorOf = new Map(tracks.map((t) => [t.id, t.color]))
   const typeOf = new Map(tracks.map((t) => [t.id, t.valueType]))

@@ -65,6 +65,13 @@ export function CapturePanel(props: Props) {
     props.onOps([upsertEntry({ ...entry, end: nowIso() })])
   }
 
+  const toggleGapFill = (track: Track) => {
+    const next: Track = { ...track }
+    if (track.fillsGapBefore === true) delete next.fillsGapBefore
+    else next.fillsGapBefore = true
+    props.onOps([upsertTrack(next)])
+  }
+
   return (
     <section class="panel capture">
       <h2>Capture</h2>
@@ -83,6 +90,17 @@ export function CapturePanel(props: Props) {
                     <i style={{ background: track.color }} />
                     {track.name}
                   </span>
+                  <label
+                    class="gapfill-toggle"
+                    title="Entries claim the span back to the previous event's end — e.g. a sleep instant logged at wake-up becomes the whole night."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={track.fillsGapBefore === true}
+                      onChange={() => toggleGapFill(track)}
+                    />
+                    fills gap
+                  </label>
                   <Show
                     when={track.valueType === ValueType.Interval}
                     fallback={<button onClick={() => logNow(track)}>Log now</button>}
