@@ -3,10 +3,13 @@ import { Temporal } from 'temporal-polyfill'
 import {
   AuthError,
   Era,
+  GOOGLE_EVENT_COLORS,
   GcalApiError,
   buildDryRunReport,
   createGcalClient,
   createTokenProvider,
+  dominantColorId,
+  hexForColorId,
   type GcalCalendarListEntry,
   type GcalClient,
   type GcalEvent,
@@ -372,9 +375,22 @@ export function ConnectPanel(props: Props) {
                     <For each={r().classification.clusters}>
                       {(cluster) => {
                         const decision = () => decisions()[cluster.title]
+                        // The color a "new track" decision would inherit -- the same
+                        // dominant-colorId rule the import plan applies.
+                        const colorId = dominantColorId(cluster.colorIds)
+                        const hex = hexForColorId(colorId)
                         return (
                           <tr>
-                            <td>{cluster.title}</td>
+                            <td>
+                              <Show when={hex !== undefined}>
+                                <i
+                                  class="cluster-swatch"
+                                  style={{ background: hex }}
+                                  title={colorId !== undefined ? GOOGLE_EVENT_COLORS[colorId]?.name : undefined}
+                                />
+                              </Show>
+                              {cluster.title}
+                            </td>
                             <td>{cluster.count}</td>
                             <td>{range(cluster.first, cluster.last)}</td>
                             <td>{cluster.eras.join(', ') || '—'}</td>

@@ -1,6 +1,8 @@
 import {
   Era,
   GcalEventStatus,
+  dominantColorId,
+  hexForColorId,
   mapEvents,
   stripMarkerPrefix,
   type GcalCalendarListEntry,
@@ -70,9 +72,16 @@ export function defaultDecision(cluster: TitleCluster, tracks: readonly Track[])
 /** Same palette family as the capture panel; hashed so a re-import keeps its color. */
 const TRACK_COLORS = ['#6c7bff', '#d98b45', '#3fa7a0', '#8faa4b', '#c2557a', '#8f6cc4']
 
-function colorFor(title: string): string {
+/**
+ * The color the user actually gave the events wins: the cluster's dominant Google
+ * colorId, translated through the same 1-11 index scribcal wrote with. Only clusters
+ * with no colored events fall back to the hash palette.
+ */
+function colorFor(cluster: TitleCluster): string {
+  const fromGcal = hexForColorId(dominantColorId(cluster.colorIds))
+  if (fromGcal !== undefined) return fromGcal
   let hash = 0
-  for (let i = 0; i < title.length; i++) hash = (hash * 31 + title.charCodeAt(i)) | 0
+  for (let i = 0; i < cluster.title.length; i++) hash = (hash * 31 + cluster.title.charCodeAt(i)) | 0
   return TRACK_COLORS[Math.abs(hash) % TRACK_COLORS.length]!
 }
 
@@ -132,7 +141,7 @@ export function buildImportOps(input: ImportPlanInput): ImportPlan {
           name,
           valueType,
           tags: [],
-          color: colorFor(cluster.title),
+          color: colorFor(cluster),
         }
         if (cluster.legacyTitles.length > 0) track.legacyTitles = [...cluster.legacyTitles]
         ops.push(upsertTrack(track, input.stamp))

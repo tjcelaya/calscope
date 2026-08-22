@@ -226,6 +226,7 @@ input[type='range'] { padding: 0; accent-color: #6c7bff; }
 .swatch-twilight { background: #212839; }
 .swatch-night { background: #161a24; border: 1px solid var(--line); }
 .swatch-ongoing { background: rgba(63, 167, 160, 0.45); border: 1px dashed #3fa7a0; }
+.cluster-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
 
 footer { display: flex; flex-direction: column; gap: 10px; }
 

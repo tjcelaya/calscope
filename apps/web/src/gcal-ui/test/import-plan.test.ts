@@ -161,6 +161,27 @@ describe('buildImportOps', () => {
     expect(entries.some((e) => e.id === 'gcal:ev-dentist')).toBe(false)
   })
 
+  it('a new track inherits the cluster’s dominant Google color; colorless clusters fall back to the palette', () => {
+    // Two blueberry coffees and one tomato outlier: blueberry wins.
+    const colored = [
+      { ...evCoffee, colorId: '9' },
+      { ...evCoffee, id: 'ev-coffee-2', colorId: '9' },
+      { ...evCoffee, id: 'ev-coffee-3', colorId: '11' },
+      evRead,
+    ]
+    const plan = buildImportOps(
+      planInput({
+        clusters: classify(colored).clusters,
+        eventsByCalendar: { [calendar.id]: colored },
+      }),
+    )
+    const tracks = plan.ops.filter((op) => op.type === OpType.TrackUpsert).map((op) => op.payload as Track)
+    expect(tracks.find((t) => t.name === 'Coffee')!.color).toBe('#5484ED')
+    // evRead carries no colorId, so Read keeps a deterministic palette color.
+    const readColor = tracks.find((t) => t.name === 'Read')!.color
+    expect(['#6c7bff', '#d98b45', '#3fa7a0', '#8faa4b', '#c2557a', '#8f6cc4']).toContain(readColor)
+  })
+
   it('is idempotent under the fold: importing twice converges to the same state', () => {
     const first = buildImportOps(planInput())
     const second = buildImportOps(planInput())
