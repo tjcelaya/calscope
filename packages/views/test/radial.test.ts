@@ -196,6 +196,79 @@ describe('marks', () => {
   })
 })
 
+describe('crossover connectors', () => {
+  const ringAt = (i: number) => (i < 8 ? ringRadii(cfg, i) : null)
+  const startOf = (path: string): [number, number] => {
+    const m = /^M(-?[\d.]+),(-?[\d.]+)/.exec(path)!
+    return [Number(m[1]), Number(m[2])]
+  }
+
+  it('without the option, output is byte-identical to the plain split', () => {
+    const plain = markFor(cfg, ringAt, 23.5, 30.5)
+    expect(plain).toHaveLength(2)
+    expect(plain.some((m) => m.isConnector)).toBe(false)
+  })
+
+  it('a midnight crossing yields two trimmed arcs plus one S connector on the destination ring', () => {
+    const marks = markFor(cfg, ringAt, 23.5, 30.5, { connect: true })
+    expect(marks).toHaveLength(3)
+    const connector = marks.find((m) => m.isConnector)!
+    expect(connector.dayOffset).toBe(1)
+    // Two cubic curves and two straight edges -- the S-band shape.
+    expect(connector.path.match(/C/g)).toHaveLength(2)
+    expect(connector.path.match(/L/g)).toHaveLength(1)
+    expect(connector.path.endsWith('Z')).toBe(true)
+    // The arcs really were trimmed: they differ from the plain split's paths.
+    const plain = markFor(cfg, ringAt, 23.5, 30.5)
+    expect(marks[0]!.path).not.toBe(plain[0]!.path)
+    expect(marks[1]!.path).not.toBe(plain[1]!.path)
+  })
+
+  it('the connector starts on the source band’s outer edge just before the boundary', () => {
+    const marks = markFor(cfg, ringAt, 23.5, 30.5, { connect: true })
+    const connector = marks.find((m) => m.isConnector)!
+    const [x, y] = startOf(connector.path)
+    const from = ringRadii(cfg, 0)
+    const half = ((0.25 / 24) * TAU)
+    expect(x).toBeCloseTo(from.r1 * Math.sin(-half), 2)
+    expect(y).toBeCloseTo(-from.r1 * Math.cos(-half), 2)
+  })
+
+  it('a short piece halves the window instead of being swallowed by its connector', () => {
+    // Next-day tail is only 0.05h, so the half-width clamps to 0.025 slots.
+    const marks = markFor(cfg, ringAt, 23.5, 24.05, { connect: true })
+    const connector = marks.find((m) => m.isConnector)!
+    const [x] = startOf(connector.path)
+    const from = ringRadii(cfg, 0)
+    expect(x).toBeCloseTo(from.r1 * Math.sin(-((0.025 / 24) * TAU)), 2)
+  })
+
+  it('in 12h mode a noon crossing bridges the AM and PM sub-bands of the SAME ring', () => {
+    const twelve = { ...cfg, hoursPerRevolution: 12 as const }
+    const marks = markFor(twelve, ringAt, 11, 13, { connect: true })
+    expect(marks).toHaveLength(3)
+    const connector = marks.find((m) => m.isConnector)!
+    expect(connector.dayOffset).toBe(0)
+    const [, y] = startOf(connector.path)
+    // Source is the AM sub-band's outer edge, half a window before the top ray.
+    const am = subBand(ringRadii(twelve, 0), 0, 12)
+    const half = (0.25 / 12) * TAU
+    expect(y).toBeCloseTo(-am.r1 * Math.cos(half), 2)
+  })
+
+  it('no connector when the far side of the crossing is off the visible rings, and the near arc stays untrimmed', () => {
+    const only0 = (i: number) => (i === 0 ? ringRadii(cfg, 0) : null)
+    const marks = markFor(cfg, only0, 23.5, 30.5, { connect: true })
+    expect(marks).toHaveLength(1)
+    expect(marks[0]!.path).toBe(markFor(cfg, only0, 23.5, 30.5)[0]!.path)
+  })
+
+  it('instants and non-crossing spans never grow connectors', () => {
+    expect(markFor(cfg, ringAt, 9, 9, { connect: true })).toHaveLength(1)
+    expect(markFor(cfg, ringAt, 9, 17, { connect: true })).toHaveLength(1)
+  })
+})
+
 describe('12h sub-bands', () => {
   it('leaves a visible gap between AM and PM so they do not read as separate days', () => {
     const ring = ringRadii(cfg, 0)

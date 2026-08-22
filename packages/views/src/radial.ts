@@ -118,6 +118,60 @@ export type Mark = {
   dayOffset: number
   /** Set when this mark is the second pass of a repeated hour. */
   isSpur?: boolean
+  /** Set when this mark is the S-shaped bridge between two pieces of one crossing event. */
+  isConnector?: boolean
+}
+
+/**
+ * Half-width, in slots, of the crossover window straddling a revolution boundary: each
+ * adjoining arc gives up this much of its span to the S-shaped bridge. Slot-based, so
+ * the wall-clock window is the same in both modes (its angular width doubles in 12h,
+ * like everything else).
+ */
+export const CROSSOVER_HALF_SLOTS = 0.25
+
+/** Cartesian point for (angle, radius) in the d3-arc frame: 0 at 12 o'clock, clockwise. */
+function radialPoint(angle: number, r: number): [number, number] {
+  return [r * Math.sin(angle), -r * Math.cos(angle)]
+}
+
+/**
+ * The S-shaped bridge across a revolution boundary (always the top ray): a band from the
+ * end cross-section of one arc piece to the start cross-section of the next, whose long
+ * sides are cubic curves leaving and arriving TANGENT to their arcs -- so the mark reads
+ * as one continuous shape bending onto the next radius -- joined by radial edges that
+ * butt flush against the trimmed arc ends.
+ */
+export function crossoverPath(from: Ring, to: Ring, halfAngle: number): string {
+  const [p1x, p1y] = radialPoint(-halfAngle, from.r1)
+  const [p0x, p0y] = radialPoint(-halfAngle, from.r0)
+  const [q1x, q1y] = radialPoint(halfAngle, to.r1)
+  const [q0x, q0y] = radialPoint(halfAngle, to.r0)
+  // Unit tangents along increasing angle at each edge (derivative of radialPoint).
+  const tpx = Math.cos(halfAngle)
+  const tpy = -Math.sin(halfAngle)
+  const tqx = Math.cos(halfAngle)
+  const tqy = Math.sin(halfAngle)
+  const kOut = Math.hypot(q1x - p1x, q1y - p1y) / 3
+  const kIn = Math.hypot(q0x - p0x, q0y - p0y) / 3
+  const c = (n: number) => Number(n.toFixed(3))
+  return (
+    `M${c(p1x)},${c(p1y)}` +
+    `C${c(p1x + kOut * tpx)},${c(p1y + kOut * tpy)},${c(q1x - kOut * tqx)},${c(q1y - kOut * tqy)},${c(q1x)},${c(q1y)}` +
+    `L${c(q0x)},${c(q0y)}` +
+    `C${c(q0x - kIn * tqx)},${c(q0y - kIn * tqy)},${c(p0x + kIn * tpx)},${c(p0y + kIn * tpy)},${c(p0x)},${c(p0y)}` +
+    'Z'
+  )
+}
+
+export type MarkForOptions = {
+  /**
+   * Bridge revolution-boundary crossings with S-shaped connectors, trimming the
+   * adjoining arc ends by the connector's half-width so the shapes tile exactly.
+   * Off by default: backgrounds and callers that place pieces independently want the
+   * plain split.
+   */
+  connect?: boolean
 }
 
 /**
@@ -127,16 +181,22 @@ export type Mark = {
  * Split at every revolution boundary so each piece is drawable and can be placed on the
  * correct ring/sub-band. Sweep comes from the slot delta directly -- comparing angles
  * would make a zero-length instant indistinguishable from a full revolution.
+ *
+ * With `connect`, each crossing where BOTH sides land on a drawable ring also yields a
+ * connector mark (tagged `isConnector`, placed on the destination piece's dayOffset),
+ * and the two arcs are trimmed back to meet its radial edges. The union of trimmed arcs
+ * plus connector covers exactly the same slots as the plain split -- the crossing is
+ * re-rendered, never re-timed, which is what the locked-zoom invariant demands.
  */
 export function markFor(
   config: RadialConfig,
   ringAt: (dayOffset: number) => Ring | null,
   startSlot: number,
   endSlot: number,
+  options?: MarkForOptions,
 ): Mark[] {
   const per = config.hoursPerRevolution
   const end = Math.max(endSlot, startSlot)
-  const marks: Mark[] = []
 
   let cursor = startSlot
   // An instant has no span to walk, so emit exactly one hairline segment.
@@ -149,17 +209,47 @@ export function markFor(
     cursor = segEnd
   }
 
-  for (const [a, b] of boundaries) {
+  type Piece = { a: number; b: number; dayOffset: number; band: Ring; trimStart: number; trimEnd: number }
+  const pieces: Array<Piece | null> = boundaries.map(([a, b]) => {
     const dayOffset = Math.floor(a / HOURS_PER_DAY)
     const ring = ringAt(dayOffset)
-    if (!ring) continue
+    if (!ring) return null
+    return { a, b, dayOffset, band: subBand(ring, subBandForSlot(a, per), per), trimStart: 0, trimEnd: 0 }
+  })
 
-    const band = subBand(ring, subBandForSlot(a, per), per)
-    const a0 = angleForSlot(a, per)
-    const sweep = Math.max(((b - a) / per) * TAU, MIN_SWEEP)
-    marks.push({ path: arcPath(band, a0, a0 + sweep), dayOffset })
+  const connectors: Mark[] = []
+  if (options?.connect === true) {
+    for (let i = 0; i + 1 < pieces.length; i++) {
+      const prev = pieces[i]
+      const next = pieces[i + 1]
+      if (!prev || !next) continue
+      // A short piece cannot give up more than half of itself, or its two connectors
+      // would swallow it whole and overlap each other.
+      const half = Math.min(CROSSOVER_HALF_SLOTS, (prev.b - prev.a) / 2, (next.b - next.a) / 2)
+      if (half <= 0) continue
+      prev.trimEnd = half
+      next.trimStart = half
+      connectors.push({
+        path: crossoverPath(prev.band, next.band, (half / per) * TAU),
+        dayOffset: next.dayOffset,
+        isConnector: true,
+      })
+    }
   }
-  return marks
+
+  const marks: Mark[] = []
+  for (const p of pieces) {
+    if (!p) continue
+    const trimmed = p.trimStart > 0 || p.trimEnd > 0
+    const len = p.b - p.a - p.trimStart - p.trimEnd
+    const a0 = angleForSlot(p.a, per) + (p.trimStart / per) * TAU
+    if (trimmed && len <= 1e-9) continue
+    // A trimmed piece must not be re-inflated to MIN_SWEEP -- it would overlap the
+    // connector it was trimmed to meet.
+    const sweep = trimmed ? (len / per) * TAU : Math.max((len / per) * TAU, MIN_SWEEP)
+    marks.push({ path: arcPath(p.band, a0, a0 + sweep), dayOffset: p.dayOffset })
+  }
+  return [...marks, ...connectors]
 }
 
 /**

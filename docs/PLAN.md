@@ -283,7 +283,7 @@ These are load-bearing. Each was arrived at by getting it wrong first.
 **Done: M0, M0.5 (both field-review rounds), M1, and the offline half of M1.5** —
 `packages/gcal` complete against recorded fixtures, IndexedDB op-log persistence, and the
 app wired to the real engine with capture and a Google Calendar connect/dry-run/import UI.
-278 tests; lint, typecheck and build clean. Live at
+285 tests; lint, typecheck and build clean. Live at
 **https://tjcelaya.github.io/calscope/** — every push to `main` with green tests deploys.
 
 **Next: the user-side half of M1.5** — the Google Cloud OAuth client (documented in the CI

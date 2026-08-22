@@ -46,7 +46,9 @@ export function RadialView(props: Props) {
         const ring = ringAt(d)
         return ring ? insetRing(ring, m.depth) : null
       }
-      for (const piece of markFor(cfg, ringAtInset, m.startSlot, m.endSlot)) {
+      // connect: crossings bridge to the next ring with an S-shaped band instead of
+      // ending dead at midnight and reappearing unrelated one radius over.
+      for (const piece of markFor(cfg, ringAtInset, m.startSlot, m.endSlot, { connect: true })) {
         const bucket = arcsByDay.get(piece.dayOffset) ?? []
         bucket.push({ path: piece.path, color: m.color, ongoing: m.kind === MarkKind.Ongoing })
         arcsByDay.set(piece.dayOffset, bucket)
