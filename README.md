@@ -18,18 +18,21 @@ but is no more canonical than it is.
 
 ## Status
 
-Early. The headless engine is complete and tested; the only UI is a set of view spikes on
-fake data — all three views side by side from one shared day-model — doubling as the
-proving ground for the mark encoding (instant ticks, ongoing-to-now arcs, containment
-nesting, daylight ring backgrounds, ring-order toggle).
+Early. The headless engine is complete and tested, and the app now runs on it: entries
+persist locally in an IndexedDB op log, a capture panel logs instants and ongoing spans,
+and a Google Calendar connect flow (read-only) produces a dry-run classification report
+and imports history onto tracks. All three views render side by side from one shared
+day-model — the proving ground for the mark encoding (instant ticks, ongoing-to-now arcs,
+containment nesting, daylight ring backgrounds, ring-order toggle) — over either demo
+data or your own.
 
 Live at **https://tjcelaya.github.io/calscope/** — every push to `main` with green tests
 deploys.
 
 ```sh
 pnpm install
-pnpm dev         # Vite dev server (currently the radial spike)
-pnpm test        # 106 tests across all packages
+pnpm dev         # Vite dev server
+pnpm test        # 263 tests across all packages
 pnpm typecheck
 pnpm lint
 pnpm eval packages/core/fixture.example.json --from 2026-01-05 --to 2026-01-12
@@ -43,7 +46,9 @@ check an engine change with no UI in the way.
 ```
 packages/core/   zero-DOM engine: model, schedule algebra, selectors, goals, op log
 packages/views/  pure geometry: no framework, path strings out
-apps/web/        Vite + Solid + PWA
+packages/gcal/   Google Calendar read path: auth, client, event→Entry mapper, era classifier
+apps/web/        Vite + Solid + PWA: views, capture, IndexedDB persistence, gcal connect UI
+
 ```
 
 ## Docs

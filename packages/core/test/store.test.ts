@@ -63,6 +63,22 @@ describe('hybrid logical clock', () => {
     clock.observe(remote)
     expect(compareHlc(clock.next(), remote)).toBeGreaterThan(0)
   })
+
+  it('observing a remote timestamp with a nonzero counter folds the counter in', () => {
+    // Same millisecond, remote counter ahead: the next local stamp must still sort
+    // after the remote one, which requires observe() to keep the counter.
+    const clock = new HlcClock('local', () => 9999)
+    const remote = encodeHlc({ millis: 9999, counter: 7, actor: 'remote' })
+    clock.observe(remote)
+    expect(compareHlc(clock.next(), remote)).toBeGreaterThan(0)
+  })
+
+  it('observing an older timestamp never regresses the clock', () => {
+    const clock = new HlcClock('local', () => 5000)
+    const first = clock.next()
+    clock.observe(encodeHlc({ millis: 1000, counter: 99, actor: 'remote' }))
+    expect(compareHlc(clock.next(), first)).toBeGreaterThan(0)
+  })
 })
 
 describe('op log fold', () => {

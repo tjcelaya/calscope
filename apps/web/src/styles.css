@@ -68,6 +68,62 @@ input[type='range'] { padding: 0; accent-color: #6c7bff; }
 
 .views { display: flex; flex-direction: column; gap: 18px; }
 
+/* Capture panel: create tracks and log against them (my-data mode). */
+.capture { display: flex; flex-direction: column; gap: 10px; }
+
+.capture-tracks { display: flex; flex-direction: column; gap: 6px; }
+
+.capture-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+.capture-row:last-child { border-bottom: none; }
+
+.capture-new { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.capture input[type='text'] {
+  background: #0e1017;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 0.85rem;
+  flex: 1 1 140px;
+}
+
+.capture input[type='color'] {
+  background: #0e1017;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px;
+  width: 36px;
+  height: 30px;
+}
+
+.capture select { min-width: 0; }
+
+.capture button {
+  background: #232a3d;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.capture button:hover { background: #2c3550; }
+.capture button:disabled { opacity: 0.45; cursor: default; }
+
+/* A running interval's stop button carries the ongoing dash so state reads the same
+   here as it does in the views. */
+.capture button.running { border-style: dashed; border-color: var(--spur); color: var(--spur); }
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -89,15 +145,23 @@ input[type='range'] { padding: 0; accent-color: #6c7bff; }
 
 .stage { touch-action: none; overscroll-behavior: contain; }
 
-/* "N columns at a time based on layout limits": overflow scrolls sideways, never squishes. */
+/* "N columns at a time based on layout limits": columns are sized to FILL the measured
+   container; below the minimum width the overflow scrolls sideways (never squishes),
+   above the maximum the content caps and margin-auto centers it. */
 .hscroll { overflow-x: auto; }
-.hscroll svg { width: auto; max-width: none; }
+.hscroll svg { width: auto; max-width: none; margin: 0 auto; }
 
 .axis-label { fill: var(--muted); font-size: 8px; }
 .axis-label.mid { text-anchor: middle; }
 
 .cell { fill: none; stroke: var(--line); rx: 4; }
 .cell-today { stroke: #f2f4ff; stroke-dasharray: 3 2; }
+
+/* Month grid excerpt: the day number reads as content, the month label as structure,
+   and the "+n" hint stays quiet -- it reports crowding, it does not compete with marks. */
+.day-num { fill: var(--ink); }
+.month-label { font-weight: 600; letter-spacing: 0.04em; }
+.overflow-hint { text-anchor: end; }
 
 .note.small { font-size: 0.75rem; margin-top: 8px; }
 

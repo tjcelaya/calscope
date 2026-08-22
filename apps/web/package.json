@@ -10,6 +10,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@calscope/core": "workspace:*",
     "@calscope/gcal": "workspace:*",
     "@calscope/views": "workspace:*",
     "@use-gesture/vanilla": "^10.3.1",

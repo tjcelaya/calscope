@@ -51,10 +51,14 @@ export class HlcClock {
 
   /** Fold a remote timestamp in so locally-issued ops sort after what we have seen. */
   observe(remote: string): void {
-    const { millis } = decodeHlc(remote)
+    const { millis, counter } = decodeHlc(remote)
+    // The counter folds in too: dropping it would let the next local stamp within the
+    // same millisecond tie with or sort before the remote one.
     if (millis > this.lastMillis) {
       this.lastMillis = millis
-      this.counter = 0
+      this.counter = counter
+    } else if (millis === this.lastMillis && counter > this.counter) {
+      this.counter = counter
     }
   }
 }

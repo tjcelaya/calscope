@@ -1,47 +1,40 @@
 import { Temporal } from 'temporal-polyfill'
+import { ValueType, type Entry, type Track } from './core'
 
 /**
- * Throwaway fixture for the M0.5 spike. Deliberately includes DST days so the spur and
- * void geometry are confronted now rather than rediscovered twice a year, and a
+ * Deterministic demo fixture -- now a PRODUCER of real core Entry/Track data, feeding
+ * the same buildModel as the op-log store. Deliberately includes DST days so the spur
+ * and void geometry are confronted now rather than rediscovered twice a year, and a
  * concurrency ladder -- instant inside interval inside interval, partial overlap,
  * an event spanning midnight, and an ONGOING event on the most recent day -- so the
- * mark-encoding ideas are tested against the cases that actually collide.
+ * mark encoding is tested against the cases that actually collide.
  */
-export type FakeTrack = { id: string; name: string; color: string }
-export type FakeEntry = {
-  trackId: string
-  start: Temporal.ZonedDateTime
-  endHours: number
-  /** Still running: no end. Rendered to the simulated `now`, styled distinctly. */
-  ongoing?: boolean
-}
-
 export const TIME_ZONE = 'America/New_York'
 
 /**
- * Spike-fidelity coordinates for the fixture zone (NYC). The real app derives these from
- * the IANA zone via a zone1970.tab-based table, refined by optional Geolocation.
+ * Spike-fidelity coordinates for the fixture zone (NYC), for day/night shading. Solar
+ * position is pure astronomy -- computed locally, no lookup service. The real app derives
+ * approximate coords from the IANA zone via a zone1970.tab-based table, refined by
+ * optional Geolocation (M2). See docs/PLAN.md.
  */
 export const LAT = 40.71
 export const LNG = -74.01
 
 /**
- * Where the fixture "lives", for day/night shading. Solar position is pure astronomy --
- * computed locally, no lookup service. The real app's chain: explicit home setting ->
- * browser geolocation (never leaves the device) -> tz representative coords -> flat.
+ * Instant captures ride Binary tracks (a "did happen" mark, per the scribcal mapping);
+ * everything with extent is an Interval track. Ongoing-ness is not a valueType -- it is
+ * an Interval entry whose `end` is still absent.
  */
-export const HOME = { lat: 40.7128, lon: -74.006 }
-
-export const tracks: FakeTrack[] = [
-  { id: 'sleep', name: 'Sleep', color: '#6c7bff' },
-  { id: 'coffee', name: 'Coffee', color: '#d98b45' },
-  { id: 'work', name: 'Work', color: '#3fa7a0' },
-  { id: 'meeting', name: 'Meeting', color: '#8faa4b' },
-  { id: 'run', name: 'Run', color: '#c2557a' },
-  { id: 'read', name: 'Read', color: '#8f6cc4' },
+export const demoTracks: Track[] = [
+  { id: 'sleep', name: 'Sleep', valueType: ValueType.Interval, tags: [], color: '#6c7bff' },
+  { id: 'coffee', name: 'Coffee', valueType: ValueType.Binary, tags: [], color: '#d98b45' },
+  { id: 'work', name: 'Work', valueType: ValueType.Interval, tags: [], color: '#3fa7a0' },
+  { id: 'meeting', name: 'Meeting', valueType: ValueType.Interval, tags: [], color: '#8faa4b' },
+  { id: 'run', name: 'Run', valueType: ValueType.Binary, tags: [], color: '#c2557a' },
+  { id: 'read', name: 'Read', valueType: ValueType.Interval, tags: [], color: '#8f6cc4' },
 ]
 
-/** Deterministic pseudo-random so the spike looks the same on every reload. */
+/** Deterministic pseudo-random so the demo looks the same on every reload. */
 function rand(seed: number): number {
   const x = Math.sin(seed * 12.9898) * 43758.5453
   return x - Math.floor(x)
@@ -65,8 +58,8 @@ const SHAPES: Array<{ trackId: string; hour: number; duration: number; jitter: n
   { trackId: 'read', hour: 21, duration: 1.25, jitter: 1 },
 ]
 
-export function generate(startDate: Temporal.PlainDate, days: number): FakeEntry[] {
-  const entries: FakeEntry[] = []
+export function generateEntries(startDate: Temporal.PlainDate, days: number): Entry[] {
+  const entries: Entry[] = []
   const lastDay = days - 1
 
   for (let i = 0; i < days; i++) {
@@ -82,34 +75,48 @@ export function generate(startDate: Temporal.PlainDate, days: number): FakeEntry
       const raw = shape.hour + offset
       const hour = ((raw % 24) + 24) % 24
 
-      entries.push({
-        trackId: shape.trackId,
-        start: date.toZonedDateTime({
-          timeZone: TIME_ZONE,
-          plainTime: Temporal.PlainTime.from({
-            hour: Math.floor(hour),
-            minute: Math.floor((hour % 1) * 60),
-          }),
+      // 'compatible' disambiguation may nudge a start out of a DST-skipped hour; the
+      // resulting string carries the true offset, so it still satisfies ZonedIsoSchema.
+      const start = date.toZonedDateTime({
+        timeZone: TIME_ZONE,
+        plainTime: Temporal.PlainTime.from({
+          hour: Math.floor(hour),
+          minute: Math.floor((hour % 1) * 60),
         }),
-        endHours: shape.duration * (0.8 + rand(seed * 7) * 0.4),
+      })
+      const endHours = shape.duration * (0.8 + rand(seed * 7) * 0.4)
+
+      entries.push({
+        id: `demo-${i}-${s}`,
+        trackId: shape.trackId,
+        start: start.toString(),
+        // Instants (duration 0) carry no end; `end` in exact minutes (Duration fields
+        // must be integers) crosses DST honestly.
+        ...(shape.duration > 0
+          ? { end: start.add({ minutes: Math.round(endHours * 60) }).toString() }
+          : {}),
       })
     }
   }
 
-  // Ongoing: work started this morning and has not been stopped. Its arc must extend to
-  // the simulated `now` -- concurrent with the 10:00 meeting and the 10:45 instant.
+  // Ongoing: work started this morning and has not been stopped -- an Interval entry
+  // with no `end`, exactly the shape the capture panel's "start" writes. Its mark must
+  // extend to `now`, concurrent with the 10:00 meeting and the 10:45 instant.
   entries.push({
+    id: 'demo-ongoing-work',
     trackId: 'work',
-    start: startDate.add({ days: lastDay }).toZonedDateTime({ timeZone: TIME_ZONE, plainTime: '09:00' }),
-    endHours: 0,
-    ongoing: true,
+    start: startDate
+      .add({ days: lastDay })
+      .toZonedDateTime({ timeZone: TIME_ZONE, plainTime: '09:00' })
+      .toString(),
   })
   return entries
 }
 
 /**
- * The clock is an INPUT here, same rule as evaluateGoal's injectable `now` -- views never
- * read the real clock, or geometry stops being pure and tests stop being deterministic.
+ * The demo's clock is simulated so the fixture stays deterministic; the App boundary
+ * substitutes the real clock in my-data mode. Either way `now` reaches the views as a
+ * parameter, never a clock read.
  */
 export function simulatedNow(startDate: Temporal.PlainDate, days: number): Temporal.ZonedDateTime {
   return startDate
@@ -117,7 +124,7 @@ export function simulatedNow(startDate: Temporal.PlainDate, days: number): Tempo
     .toZonedDateTime({ timeZone: TIME_ZONE, plainTime: '14:30' })
 }
 
-/** The three scenarios the spike exists to answer questions about. */
+/** The three scenarios the demo fixture exists to answer questions about. */
 export const SCENARIOS = [
   { key: 'normal', label: 'Ordinary week', start: Temporal.PlainDate.from('2026-06-08') },
   { key: 'fallback', label: 'Fall back (25h)', start: Temporal.PlainDate.from('2026-10-29') },

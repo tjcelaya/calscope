@@ -2,31 +2,21 @@ import { For, Show, createMemo } from 'solid-js'
 import {
   angleForSlot,
   anomalyGeometry,
-  defaultRadialConfig,
   hourTicks,
+  insetRing,
   markFor,
+  radialConfigForZoom,
   radialExtent,
+  ringIndexFor,
   ringRadii,
   subBand,
   subBandForSlot,
-  type Ring,
+  type RingOrder,
 } from '@calscope/views'
-import {
-  Emphasis,
-  MarkKind,
-  RingOrder,
-  dimmed,
-  type SpikeModel,
-} from './spike-model'
-
-/** Fraction of band thickness removed per containment level, with an absolute floor so
- * nesting stays visible on phones, capped so 3-deep survives. */
-const INSET_PER_DEPTH = 0.18
-const MAX_INSET = 0.36
-const MIN_INSET = 2.5
+import { Emphasis, MarkKind, dimmed, type ViewModel } from './model'
 
 type Props = {
-  model: SpikeModel
+  model: ViewModel
   mode: 24 | 12
   emphasis: Emphasis
   order: RingOrder
@@ -35,40 +25,16 @@ type Props = {
 export function RadialView(props: Props) {
   const count = () => props.model.days.length
 
-  // Ring thickness is a function of ZOOM (ring count) -- fewer rings fill the same
-  // target radius with thicker bands. This is what makes containment nesting legible on
-  // a phone, and it is exactly the slotSize(zoom) shape the locked-zoom invariant
-  // permits: geometry depends on zoom, never on any day's real length.
-  const config = createMemo(() => {
-    const inner = 52
-    const gap = 6
-    const target = 250
-    const thickness = Math.max(14, Math.min(44, (target - inner) / count() - gap))
-    return {
-      ...defaultRadialConfig,
-      innerRadius: inner,
-      ringGap: gap,
-      ringThickness: thickness,
-      spurHeight: Math.max(6, thickness * 0.4),
-      hoursPerRevolution: props.mode,
-    }
-  })
-
-  // Day -> ring assignment is a pure permutation; everything downstream is unchanged.
-  const ringIndexOf = (dayIndex: number) =>
-    props.order === RingOrder.NewestIn ? count() - 1 - dayIndex : dayIndex
+  // Zoom-derived geometry and the order permutation both live in @calscope/views now --
+  // the spike's local copies were promoted there and deleted here.
+  const config = createMemo(() => radialConfigForZoom(count(), { hoursPerRevolution: props.mode }))
+  const ringIndexOf = (dayIndex: number) => ringIndexFor(dayIndex, count(), props.order)
 
   const bands = createMemo(() => {
     const cfg = config()
     const per = cfg.hoursPerRevolution
     const model = props.model
     const ringAt = (d: number) => (d >= 0 && d < count() ? ringRadii(cfg, ringIndexOf(d)) : null)
-
-    const insetRing = (ring: Ring, depth: number): Ring => {
-      const t = ring.r1 - ring.r0
-      const k = depth === 0 ? 0 : Math.min(Math.max(depth * INSET_PER_DEPTH * t, MIN_INSET), MAX_INSET * t)
-      return { r0: ring.r0 + k, r1: ring.r1 - k }
-    }
 
     type Arc = { path: string; color: string; ongoing: boolean }
     type Tick = { angleDeg: number; r0: number; r1: number; color: string }

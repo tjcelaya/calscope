@@ -268,11 +268,15 @@ These are load-bearing. Each was arrived at by getting it wrong first.
 
 ## 5. Status
 
-**Done: M0, M0.5 (both field-review rounds), M1.** 106 tests; lint, typecheck and build
-clean. Live at **https://tjcelaya.github.io/calscope/** — every push to `main` with green
-tests deploys.
+**Done: M0, M0.5 (both field-review rounds), M1, and the offline half of M1.5** —
+`packages/gcal` complete against recorded fixtures, IndexedDB op-log persistence, and the
+app wired to the real engine with capture and a Google Calendar connect/dry-run/import UI.
+263 tests; lint, typecheck and build clean. Live at
+**https://tjcelaya.github.io/calscope/** — every push to `main` with green tests deploys.
 
-**Next milestone: M1.5** (Google Calendar read path). A fresh agent should read section 4
+**Next: the user-side half of M1.5** — the Google Cloud OAuth client (documented in the CI
+and hosting section) and the dry-run classification report against the real account, which
+is expected to force iteration on the era rules. A fresh agent should read section 4
 (invariants) and the field findings below before touching `packages/views` or the spike —
 several invariants were arrived at by getting them wrong first, and the findings record
 which "obvious" implementations are known-wrong.
@@ -280,9 +284,10 @@ which "obvious" implementations are known-wrong.
 | Package | State |
 |---|---|
 | `packages/core` | Complete for M1: enums, valibot schemas, interval algebra, calendar windows, schedule evaluator, selector resolver, unit conversion, goal + routine evaluation, HLC, op log, `pnpm eval` CLI |
-| `packages/views` | `virtualDay()` + radial geometry, hardened by two field-review rounds: anomaly at the correct wall-clock hour on both shapes, `AtDayEnd` abutting midnight on the ring, sub-band selection by within-day time. No `TimeScale` interface yet — that lands in M2 |
-| `apps/web` | **View spikes** — fake data, no engine, no persistence — all three views side by side from one shared day-model (`spike-model.ts` → `RadialView` / `ColumnsView` / `GridView`), prototyping the M2 mark encoding: instant ticks, ongoing-to-`now`, containment inset, daylight backgrounds, facet emphasis, ring-order toggle, zoom-scaled band thickness. The winners get hardened into `packages/views` in M2 |
-| `packages/gcal`, `packages/ui` | Not created yet |
+| `packages/views` | `virtualDay()` + radial geometry, hardened by two field-review rounds, plus the pieces extracted from the spike: `config.ts` (zoom→ring geometry), `inset.ts` (containment depth), `order.ts` (ring-order swap), `viewport.ts` (`snapViewport`). No `TimeScale` interface yet — that lands in M2 |
+| `packages/gcal` | Complete offline: injectable GIS auth (readonly scope), fixture-tested client (`singleEvents`, `showDeleted`, pagination, `syncToken`, `410` → `FullResyncRequired`), normative event→`Entry` mapper (zone resolution, all-day, skipped-hour rejection reported not snapped, cross-zone offset fallback), era classifier, dry-run report. Untested against the real API — that is the user-side half |
+| `apps/web` | Real engine + persistence: IndexedDB op store (`src/persist/`, HLC continuity across restarts, cached fold), capture panel (create track, log instant, start/stop ongoing), demo/my-data source toggle, gcal connect UI (`src/gcal-ui/`: calendar list, dry-run report, per-cluster import, incremental pull with resync-replace semantics), three views on either data source |
+| `packages/ui` | Not created yet (spike components still live in `apps/web` directly) |
 
 ### Spike findings (M0.5)
 
@@ -488,15 +493,18 @@ decide. Title prefixes are stripped on import into `Track.legacyTitles` so re-im
 idempotent.
 
 **Acceptance criteria**
-- [ ] Dry-run classification report runs *before* any import: per-era counts, date ranges,
+- [x] Dry-run classification report runs *before* any import: per-era counts, date ranges,
       clustered by distinct title.
-- [ ] Review UI maps title clusters onto `Track`s; prefixes strip into `legacyTitles`.
-- [ ] Re-running the import produces **no duplicates**.
-- [ ] Recorded (scrubbed) API-response fixtures; `packages/gcal` tested offline against them:
+- [x] Review UI maps title clusters onto `Track`s; prefixes strip into `legacyTitles`.
+- [x] Re-running the import produces **no duplicates** (`Entry.id = 'gcal:' + eventId`).
+- [x] Recorded (scrubbed) API-response fixtures; `packages/gcal` tested offline against them:
       `syncToken` continuation, `410 Gone` → full resync, recurring expansion, all-day vs
       timed events.
-- [ ] A zero-duration event imports as `Binary`, not a zero-length `Interval`.
+- [x] A zero-duration event imports as `Binary`, not a zero-length `Interval`.
 - [ ] **Viewer-only mode works**: app is useful over the calendar with zero local entries.
+      *(Built; unverified until the real-account run.)*
+- [ ] The dry-run report has been run against the **real account** and the era rules
+      iterated on what it actually finds. Requires the user-side OAuth client setup.
 
 ### M2 — Radial view, for real
 
@@ -740,5 +748,15 @@ written. Fixture shape: `{ tz?, tags[], tracks[], entries[], goals[], routines[]
   beyond that, and for *partial* overlaps, the encoding is unresolved.
 - Polar day/night: the daylight background currently degrades to a flat band above the
   arctic circles; a real treatment is undesigned.
+- Daylight coordinates are hardcoded to New York; any other home zone gets flat-night
+  backgrounds. Fix is a small IANA-zone → representative-coordinates table (tzdb
+  `zone1970.tab` carries exactly this), plus an optional manual override.
+- The same Google event id appearing in two selected calendars maps to one `Entry`, so
+  which track wins depends on pull order. Harmless for the primary-calendar workflow;
+  needs a rule (e.g. calendar-scoped entry ids) before multi-calendar import is real.
+- A captured instant's tick coincides with the `now` line at the moment of capture, so
+  the mark is invisible until time moves on. Cosmetic; needs a capture-flash affordance.
+- The manifest icon is a single SVG; iOS home-screen installs want a PNG
+  `apple-touch-icon`, deferred until there is real branding to rasterize.
 - Browser-only OAuth gets **no refresh token**, so sync only happens while the app is open.
   If that becomes annoying the fix is a ~150-line token broker, not a redesign.

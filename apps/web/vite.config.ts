@@ -3,13 +3,12 @@ import solid from 'vite-plugin-solid'
 import { VitePWA } from 'vite-plugin-pwa'
 
 /**
- * Deploys serve from the root of their own subdomain (Cloudflare Pages), so BASE_PATH is
- * normally unset and the bundle stays root-relative.
+ * GitHub Pages serves project sites under /<repo>/, so CI sets BASE_PATH to that prefix;
+ * local dev leaves it unset and the bundle stays root-relative.
  *
- * It is kept because self-hosting is a stated goal of the project: anyone serving this
- * under a subpath -- https://example.com/calscope/ -- needs the prefix baked into asset
- * URLs and into the PWA manifest, or the page 404s on its own JS and the service worker
- * silently loses scope.
+ * Anyone self-hosting under a subpath needs the prefix baked into asset URLs and into
+ * the PWA manifest, or the page 404s on its own JS and the service worker silently
+ * loses scope.
  */
 const base = process.env.BASE_PATH ?? '/'
 
@@ -30,6 +29,9 @@ export default defineConfig({
         // so a '/' scope on a '/calscope/' deployment silently disables offline support.
         start_url: base,
         scope: base,
+        // SVG covers Chromium/Android installs; iOS wants a PNG apple-touch-icon,
+        // deferred until there is real branding to rasterize.
+        icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
       },
     }),
   ],

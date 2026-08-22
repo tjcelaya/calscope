@@ -35,6 +35,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@calscope/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@calscope/gcal':
         specifier: workspace:*
         version: link:../../packages/gcal
