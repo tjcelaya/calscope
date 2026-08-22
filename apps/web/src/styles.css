@@ -238,6 +238,38 @@ input[type='range'] { padding: 0; accent-color: #6c7bff; }
 .swatch-ongoing { background: rgba(63, 167, 160, 0.45); border: 1px dashed #3fa7a0; }
 .cluster-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
 
+.controls label.check {
+  flex-direction: row;
+  align-items: center;
+  align-self: flex-end;
+  gap: 6px;
+  padding-bottom: 6px;
+  cursor: pointer;
+}
+
+/* Radial face labels. The ring label's halo keeps it readable over any arc. */
+.hour-label {
+  fill: var(--muted);
+  font-size: 9px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.ring-label {
+  fill: var(--ink);
+  font-size: 8.5px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.day-circles { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.day-circle { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0; }
+.day-circle svg { width: 132px; height: 132px; }
+.day-circle-label { font-size: 11px; color: var(--muted); }
+
 footer { display: flex; flex-direction: column; gap: 10px; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 12px; }

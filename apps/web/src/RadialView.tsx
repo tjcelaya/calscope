@@ -20,6 +20,14 @@ type Props = {
   mode: 24 | 12
   emphasis: Emphasis
   order: RingOrder
+  /** Bridge boundary crossings with S-connectors (markFor's connect option). */
+  connect: boolean
+}
+
+/** Hour numerals around the face: every 3 hours, clock-style 12 in 12h mode. */
+function hourLabelText(h: number, per: 24 | 12): string {
+  if (per === 24) return String(h)
+  return String(h === 0 ? 12 : h)
 }
 
 export function RadialView(props: Props) {
@@ -48,7 +56,7 @@ export function RadialView(props: Props) {
       }
       // connect: crossings bridge to the next ring with an S-shaped band instead of
       // ending dead at midnight and reappearing unrelated one radius over.
-      for (const piece of markFor(cfg, ringAtInset, m.startSlot, m.endSlot, { connect: true })) {
+      for (const piece of markFor(cfg, ringAtInset, m.startSlot, m.endSlot, { connect: props.connect })) {
         const bucket = arcsByDay.get(piece.dayOffset) ?? []
         bucket.push({ path: piece.path, color: m.color, ongoing: m.kind === MarkKind.Ongoing })
         arcsByDay.set(piece.dayOffset, bucket)
@@ -87,8 +95,29 @@ export function RadialView(props: Props) {
 
   const extent = createMemo(() => radialExtent(config(), count()))
   const viewBox = createMemo(() => {
-    const e = extent() + 12
+    // Padding leaves room for the hour numerals just outside the outermost ring.
+    const e = extent() + 24
     return `${-e} ${-e} ${e * 2} ${e * 2}`
+  })
+
+  const hourLabels = createMemo(() => {
+    const per = config().hoursPerRevolution
+    const r = extent() + 12
+    return Array.from({ length: per / 3 }, (_, i) => {
+      const h = i * 3
+      const a = angleForSlot(h, per)
+      return { text: hourLabelText(h, per), x: r * Math.sin(a), y: -r * Math.cos(a) }
+    })
+  })
+
+  // Which day each ring is: MM-DD at mid-band on the left horizontal (the 18:00 ray in
+  // 24h). A halo stroke keeps it legible over whatever arc happens to be under it.
+  const ringLabels = createMemo(() => {
+    const cfg = config()
+    return props.model.days.map((sd) => {
+      const ring = ringRadii(cfg, ringIndexOf(sd.index))
+      return { text: sd.day.date.toString().slice(5), x: -(ring.r0 + ring.r1) / 2, y: 0 }
+    })
   })
 
   const nowAngleDeg = createMemo(
@@ -154,6 +183,21 @@ export function RadialView(props: Props) {
               )}
             </Show>
           </g>
+        )}
+      </For>
+
+      <For each={hourLabels()}>
+        {(l) => (
+          <text class="hour-label" x={l.x} y={l.y}>
+            {l.text}
+          </text>
+        )}
+      </For>
+      <For each={ringLabels()}>
+        {(l) => (
+          <text class="ring-label" x={l.x} y={l.y}>
+            {l.text}
+          </text>
         )}
       </For>
 

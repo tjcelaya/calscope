@@ -9,6 +9,7 @@ import { Emphasis, buildModel } from './model'
 import { CapturePanel } from './CapturePanel'
 import { ConnectPanel } from './gcal-ui/ConnectPanel'
 import { RadialView } from './RadialView'
+import { DayCirclesView } from './DayCirclesView'
 import { ColumnsView } from './ColumnsView'
 import { GridView } from './GridView'
 
@@ -33,6 +34,7 @@ const PREF = {
   policy: 'calscope.ui.policy',
   emphasis: 'calscope.ui.emphasis',
   ringOrder: 'calscope.ui.ringOrder',
+  connect: 'calscope.ui.connect',
 } as const
 
 function loadPref<T extends string>(key: string, valid: readonly T[]): T | null {
@@ -77,6 +79,7 @@ export function App() {
   const [order, setOrder] = createSignal<RingOrder>(
     loadPref<RingOrder>(PREF.ringOrder, Object.values(RingOrder)) ?? RingOrder.NewestOut,
   )
+  const [connect, setConnect] = createSignal(loadPref(PREF.connect, ['on', 'off']) !== 'off')
 
   // The op-log store: opened once, folded state exposed as a resource re-fetched after
   // every write. All semantics live in persist/core's fold; the app only appends ops.
@@ -291,6 +294,19 @@ export function App() {
             <option value={RingOrder.NewestIn}>Center</option>
           </select>
         </label>
+
+        <label class="check">
+          <input
+            type="checkbox"
+            checked={connect()}
+            onChange={(e) => {
+              const v = e.currentTarget.checked
+              setConnect(v)
+              savePref(PREF.connect, v ? 'on' : 'off')
+            }}
+          />
+          Connected crossings
+        </label>
       </div>
 
       <Show when={dataSource() === DataSource.Mine}>
@@ -307,8 +323,19 @@ export function App() {
         <section class="panel panel-radial">
           <h2>Radial</h2>
           <div class="stage" ref={radialHost}>
-            <RadialView model={model()} mode={mode()} emphasis={emphasis()} order={order()} />
+            <RadialView
+              model={model()}
+              mode={mode()}
+              emphasis={emphasis()}
+              order={order()}
+              connect={connect()}
+            />
           </div>
+        </section>
+
+        <section class="panel">
+          <h2>Day circles</h2>
+          <DayCirclesView model={model()} mode={mode()} emphasis={emphasis()} connect={connect()} />
         </section>
 
         <section class="panel">
