@@ -159,6 +159,27 @@ describe('export / import', () => {
   })
 })
 
+describe('wipe', () => {
+  it('drops every op, and the store keeps working afterwards', async () => {
+    const dbName = freshDbName()
+    const stamp = stampFor('actor-a')
+    const store = await OpStore.open({ dbName })
+    await store.appendMany(seedOps(stamp).ops)
+    expect(Object.keys((await store.getState()).tracks)).toHaveLength(1)
+
+    await store.wipe()
+    const empty = await store.getState()
+    expect(empty.tracks).toEqual({})
+    expect(empty.entries).toEqual({})
+    expect(await store.loadAll()).toEqual([])
+
+    // Post-wipe writes fold from scratch -- the store is not poisoned.
+    await store.append(upsertTrack({ id: 't2', name: 'fresh', valueType: 'binary', tags: [], color: '#fff' }, stamp))
+    expect(Object.keys((await store.getState()).tracks)).toEqual(['t2'])
+    store.close()
+  })
+})
+
 describe('HLC continuity across store restarts', () => {
   it('a restarted clock with a regressed wall clock still stamps after the log head', async () => {
     const dbName = freshDbName()

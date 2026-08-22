@@ -32,7 +32,7 @@ deploys.
 ```sh
 pnpm install
 pnpm dev         # Vite dev server
-pnpm test        # 285 tests across all packages
+pnpm test        # 286 tests across all packages
 pnpm typecheck
 pnpm lint
 pnpm eval packages/core/fixture.example.json --from 2026-01-05 --to 2026-01-12

@@ -112,6 +112,18 @@ export class OpStore {
     return this.snapshot
   }
 
+  /**
+   * Testing aid: drop every op so the next getState() folds an empty log. The clock is
+   * left alone -- it only ever moves forward, so post-wipe ops still sort after the
+   * wiped history if an export of it ever comes back.
+   */
+  async wipe(): Promise<void> {
+    const tx = this.db.transaction(OPS, 'readwrite')
+    await tx.store.clear()
+    await tx.done
+    this.snapshot = null
+  }
+
   close(): void {
     this.db.close()
   }

@@ -283,7 +283,7 @@ These are load-bearing. Each was arrived at by getting it wrong first.
 **Done: M0, M0.5 (both field-review rounds), M1, and the offline half of M1.5** —
 `packages/gcal` complete against recorded fixtures, IndexedDB op-log persistence, and the
 app wired to the real engine with capture and a Google Calendar connect/dry-run/import UI.
-285 tests; lint, typecheck and build clean. Live at
+286 tests; lint, typecheck and build clean. Live at
 **https://tjcelaya.github.io/calscope/** — every push to `main` with green tests deploys.
 
 **Next: the user-side half of M1.5** — the Google Cloud OAuth client (documented in the CI
@@ -763,6 +763,15 @@ written. Fixture shape: `{ tz?, tags[], tracks[], entries[], goals[], routines[]
 - Daylight coordinates are hardcoded to New York; any other home zone gets flat-night
   backgrounds. Fix is a small IANA-zone → representative-coordinates table (tzdb
   `zone1970.tab` carries exactly this), plus an optional manual override.
+- **Cross-device color inconsistency** (Framework 13 / iPad Pro / Moto Razr, all Brave):
+  the same build renders visibly different palettes per device. Two suspects, unconfirmed:
+  (a) browser auto-dark / night-mode re-tinting — the `color-scheme: dark` meta is our
+  defense but Brave's Night Mode (iOS: Settings → Appearance; Android:
+  `brave://flags` auto-dark) can override it; (b) wide-gamut displays — hex colors are
+  sRGB, and P3 panels color-manage them differently per browser. Diagnosis first:
+  screenshot the same build on each device with night-mode explicitly off, then compare.
+  If (b), CSS `color(display-p3 …)` fallbacks are the lever. Deferred to M2 hardening —
+  not load-bearing while the encoding itself is still settling.
 - The same Google event id appearing in two selected calendars maps to one `Entry`, so
   which track wins depends on pull order. Harmless for the primary-calendar workflow;
   needs a rule (e.g. calendar-scoped entry ids) before multi-calendar import is real.

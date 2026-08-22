@@ -17,6 +17,8 @@ type Props = {
   entries: readonly Entry[]
   tz: string
   onOps: (ops: Op[]) => void
+  /** Wipe the local op log + gcal sync tokens, then reload. Prototype testing aid. */
+  onReset: () => void
 }
 
 /**
@@ -154,6 +156,29 @@ export function CapturePanel(props: Props) {
           Add track
         </button>
       </form>
+
+      <div class="capture-danger">
+        <button
+          class="danger"
+          onClick={() => {
+            if (
+              globalThis.confirm(
+                'Delete ALL local data — every track, entry, and the op log — plus the Google ' +
+                  'sync tokens, then reload?\n\nGoogle Calendar itself is untouched; re-import ' +
+                  'from the Google Calendar panel afterwards.',
+              )
+            ) {
+              props.onReset()
+            }
+          }}
+        >
+          Wipe local data…
+        </button>
+        <span class="note small">
+          Testing aid while the import heuristics are settling: dump everything local and pull
+          again fresh.
+        </span>
+      </div>
     </section>
   )
 }

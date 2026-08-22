@@ -265,6 +265,21 @@ input[type='range'] { padding: 0; accent-color: #6c7bff; }
   stroke-linejoin: round;
 }
 
+.capture-danger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+button.danger {
+  background: transparent;
+  color: #ff9b9b;
+  border-color: #5a2a2a;
+}
+button.danger:hover { background: rgba(220, 33, 39, 0.12); }
+
 .wrap-connector {
   fill: none;
   stroke-width: 3;

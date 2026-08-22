@@ -56,3 +56,19 @@ export function saveSyncToken(calendarId: string, token: string): void {
 export function clearSyncToken(calendarId: string): void {
   write(SYNC_TOKEN_PREFIX + calendarId, null)
 }
+
+/** Local-wipe support: with no tokens, every calendar's next pull is a full window pull. */
+export function clearAllSyncTokens(): void {
+  try {
+    const store = globalThis.localStorage
+    if (!store) return
+    const doomed: string[] = []
+    for (let i = 0; i < store.length; i++) {
+      const key = store.key(i)
+      if (key !== null && key.startsWith(SYNC_TOKEN_PREFIX)) doomed.push(key)
+    }
+    for (const key of doomed) store.removeItem(key)
+  } catch {
+    // Best-effort; see module comment.
+  }
+}

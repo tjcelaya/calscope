@@ -8,6 +8,7 @@ import { LAT, LNG, SCENARIOS, TIME_ZONE, demoTracks, generateEntries, simulatedN
 import { Emphasis, buildModel } from './model'
 import { CapturePanel } from './CapturePanel'
 import { ConnectPanel } from './gcal-ui/ConnectPanel'
+import { clearAllSyncTokens } from './gcal-ui/prefs'
 import { RadialView } from './RadialView'
 import { DayCirclesView } from './DayCirclesView'
 import { ColumnsView } from './ColumnsView'
@@ -95,6 +96,17 @@ export function App() {
       // so a just-started entry's ongoing mark reaches the current minute.
       setClockNow(Temporal.Now.zonedDateTimeISO(deviceTz))
       setWriteCount((n) => n + 1)
+    })()
+  }
+
+  // "Dump local state and pull again": clear the op log and sync tokens, then reload so
+  // every panel's session state starts over too. Confirmation lives in the button.
+  const resetLocal = () => {
+    void (async () => {
+      const store = await storePromise
+      await store.wipe()
+      clearAllSyncTokens()
+      globalThis.location.reload()
     })()
   }
 
@@ -310,7 +322,13 @@ export function App() {
       </div>
 
       <Show when={dataSource() === DataSource.Mine}>
-        <CapturePanel tracks={myTracks()} entries={myEntries()} tz={deviceTz} onOps={appendOps} />
+        <CapturePanel
+          tracks={myTracks()}
+          entries={myEntries()}
+          tz={deviceTz}
+          onOps={appendOps}
+          onReset={resetLocal}
+        />
       </Show>
 
       {/* Always mounted (collapsed by default): viewer-only mode over a calendar with
