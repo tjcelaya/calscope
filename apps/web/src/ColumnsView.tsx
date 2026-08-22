@@ -22,7 +22,12 @@ const INSET_PER_DEPTH = 0.18
 const MAX_INSET = 0.36
 const MIN_INSET = 3
 
-type Props = { model: ViewModel; emphasis: Emphasis }
+type Props = {
+  model: ViewModel
+  emphasis: Emphasis
+  /** Bridge midnight crossings with wrap ribbons -- the linear analog of the radial S. */
+  connect: boolean
+}
 
 export function ColumnsView(props: Props) {
   let host!: HTMLDivElement
@@ -57,6 +62,51 @@ export function ColumnsView(props: Props) {
     depth === 0
       ? 0
       : Math.min(Math.max(depth * INSET_PER_DEPTH * colW(), MIN_INSET), MAX_INSET * colW())
+
+  /**
+   * The columns analog of the radial S-connector. Midnight-end and midnight-start sit at
+   * OPPOSITE corners here (bottom of one column, top of the next), so the bridge is a
+   * wrap ribbon: a thin stroke leaving the block's side just above its bottom, running
+   * up the gutter between the columns, and entering the next block's side just below its
+   * top -- the text-wrap idiom. Anchor points stay INSIDE each block so the ribbon reads
+   * as attached, not adjacent.
+   */
+  const connectors = createMemo(() => {
+    if (!props.connect) return []
+    const count = props.model.days.length
+    const gap = COLUMNS.gap
+    const out: { d: string; color: string; kind: MarkKind }[] = []
+    for (const m of props.model.marks) {
+      if (m.kind === MarkKind.Instant) continue
+      const firstDay = Math.floor(m.startSlot / 24)
+      const lastDay = Math.floor((m.endSlot - 1e-9) / 24)
+      for (let b = firstDay + 1; b <= lastDay; b++) {
+        if (b - 1 < 0 || b >= count) continue
+        // Stub heights clamp to half the block so a sliver block keeps its ribbon inside.
+        const hA = 24 - Math.max(m.startSlot - 24 * (b - 1), 0)
+        const hB = Math.min(m.endSlot - 24 * b, 24)
+        const y1 = slotY(24 - Math.min(0.75, hA / 2))
+        const y2 = slotY(Math.min(0.75, hB / 2))
+        const inset = insetX(m.depth)
+        const xA = colX(b - 1) + colW() - inset - 1
+        const xB = colX(b) + inset + 1
+        const xg = colX(b) - gap / 2
+        const r = Math.min(4, gap / 2 - 1)
+        out.push({
+          d:
+            `M${xA},${y1}` +
+            `L${xg - r},${y1}` +
+            `Q${xg},${y1},${xg},${y1 - r}` +
+            `L${xg},${y2 + r}` +
+            `Q${xg},${y2},${xg + r},${y2}` +
+            `L${xB},${y2}`,
+          color: m.color,
+          kind: m.kind,
+        })
+      }
+    }
+    return out
+  })
 
   return (
     <div class="hscroll" ref={host}>
@@ -166,6 +216,21 @@ export function ColumnsView(props: Props) {
               </g>
             )
           }}
+        </For>
+
+        <For each={connectors()}>
+          {(c) => (
+            <path
+              d={c.d}
+              stroke={c.color}
+              vector-effect="non-scaling-stroke"
+              classList={{
+                'wrap-connector': true,
+                ongoing: c.kind === MarkKind.Ongoing,
+                dim: dimmed(c.kind, props.emphasis),
+              }}
+            />
+          )}
         </For>
 
         <line

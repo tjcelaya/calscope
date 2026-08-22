@@ -340,7 +340,7 @@ export function App() {
 
         <section class="panel">
           <h2>Day columns</h2>
-          <ColumnsView model={model()} emphasis={emphasis()} />
+          <ColumnsView model={model()} emphasis={emphasis()} connect={connect()} />
         </section>
 
         <section class="panel">
