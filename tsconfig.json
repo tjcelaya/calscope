@@ -1,8 +1,17 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/core" },
-    { "path": "./packages/views" },
-    { "path": "./apps/web" }
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/gcal"
+    },
+    {
+      "path": "./packages/views"
+    },
+    {
+      "path": "./apps/web"
+    }
   ]
 }
